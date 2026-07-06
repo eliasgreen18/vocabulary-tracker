@@ -1,4 +1,4 @@
-package com.eliasgreen18.vocabularytracker.ui.home
+package com.eliasgreen18.vocabularytracker.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,12 +15,12 @@ import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(
+class StatsViewModel @Inject constructor(
     getHomeDashboardUseCase: GetHomeDashboardUseCase,
     getLearningProgressUseCase: GetLearningProgressUseCase,
-    getReviewQueueUseCase: GetReviewQueueUseCase,
     getGlobalStatsUseCase: GetGlobalStatsUseCase,
-    getLearningInsightsUseCase: GetLearningInsightsUseCase
+    getLearningInsightsUseCase: GetLearningInsightsUseCase,
+    getDueWordsUseCase: GetDueWordsUseCase
 ) : ViewModel() {
 
     val dashboardState: StateFlow<HomeDashboard?> = getHomeDashboardUseCase()
@@ -51,7 +51,7 @@ class HomeViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    val reviewQueueCount: StateFlow<Int> = getReviewQueueUseCase()
+    val dueCount: StateFlow<Int> = getDueWordsUseCase()
         .map { it.size }
         .stateIn(
             scope = viewModelScope,

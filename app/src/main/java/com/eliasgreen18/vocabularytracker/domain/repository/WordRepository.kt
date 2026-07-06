@@ -12,18 +12,31 @@ interface WordRepository {
     fun getWordByIdFlow(id: Long): Flow<Word?>
     suspend fun insertWord(word: Word): Long
     suspend fun insertOccurrence(occurrence: Occurrence): Long
+    fun getOccurrenceCountForWord(wordId: Long): Flow<Int>
     fun getSessionWords(sessionId: Long): Flow<List<WordWithCount>>
+    fun getChapterWords(chapterId: Long): Flow<List<WordWithCount>>
     fun getWordHistory(wordId: Long): Flow<List<WordOccurrenceDetail>>
     fun searchWords(query: String): Flow<List<WordWithCount>>
     fun getFocusWords(): Flow<List<WordWithCount>>
     suspend fun updateFocusStatus(wordId: Long, isFocus: Boolean)
     fun getTotalWordsCount(): Flow<Int>
     fun getUniqueWordsCountSince(timestamp: Long): Flow<Int>
-    fun getReviewQueue(startOfToday: Long): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.ReviewWord>>
+    fun getDueWords(now: Long): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.ReviewWord>>
     suspend fun markWordReviewed(wordId: Long, timestamp: Long)
     suspend fun markWordNotRemembered(wordId: Long)
+    suspend fun updateSrsMetadata(
+        wordId: Long,
+        nextReviewAt: java.time.Instant,
+        lastReviewAt: java.time.Instant,
+        reviewCount: Int,
+        successfulReviews: Int,
+        currentIntervalDays: Int
+    )
     suspend fun updateTranslation(wordId: Long, translation: String?, status: com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus)
     fun getPendingTranslations(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.Word>>
+    fun getTotalReviewsDoneCount(): Flow<Int>
+    fun getTotalSuccessfulReviewsCount(): Flow<Int>
+    fun getTotalReviewAttemptsCount(): Flow<Int>
     fun getTotalOccurrencesCount(): Flow<Int>
     fun getTranslatedWordsCount(): Flow<Int>
     fun getTopWordsForBook(bookId: Long, limit: Int): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordWithCount>>

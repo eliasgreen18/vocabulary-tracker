@@ -45,9 +45,16 @@ class BookDetailViewModel @Inject constructor(
                 val sessionId = startReadingSessionUseCase(lastChapter.id)
                 onSessionReady(sessionId)
             } else {
-                // If no chapters, we probably need to ask for number 1
+                // If no chapters, start with number 1
                 startNewChapter(1, null, onSessionReady)
             }
+        }
+    }
+
+    fun startSessionForChapter(chapterId: Long, onSessionReady: (Long) -> Unit) {
+        viewModelScope.launch {
+            val sessionId = startReadingSessionUseCase(chapterId)
+            onSessionReady(sessionId)
         }
     }
 

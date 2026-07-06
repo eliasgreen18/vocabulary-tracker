@@ -7,5 +7,8 @@ data class ReviewWord(
     val isFocusWord: Boolean,
     val lastReviewedAt: Long?,
     val reviewPriority: Int,
-    val lastContext: String
+    val lastContext: String,
+    // SRS Columns
+    val currentIntervalDays: Int,
+    val nextReviewAt: Long?
 )

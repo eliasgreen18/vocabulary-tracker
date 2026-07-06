@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,10 +20,9 @@ import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchWordsScreen(
-    onNavigateBack: () -> Unit,
+fun WordsScreen(
     onNavigateToWordDetail: (Long) -> Unit,
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: WordsViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
@@ -32,14 +30,7 @@ fun SearchWordsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Search Vocabulary") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+            TopAppBar(title = { Text("My Vocabulary") })
         }
     ) { innerPadding ->
         Column(
@@ -86,7 +77,7 @@ fun SearchWordsScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 items(searchResults) { wordWithCount ->
-                    SearchWordItem(
+                    WordItem(
                         word = wordWithCount,
                         onToggleFocus = { isFocus -> viewModel.onToggleFocus(wordWithCount.wordId, isFocus) },
                         onClick = { onNavigateToWordDetail(wordWithCount.wordId) }
@@ -98,7 +89,7 @@ fun SearchWordsScreen(
 }
 
 @Composable
-fun SearchWordItem(word: WordWithCount, onToggleFocus: (Boolean) -> Unit, onClick: () -> Unit) {
+fun WordItem(word: WordWithCount, onToggleFocus: (Boolean) -> Unit, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(word.wordText) },

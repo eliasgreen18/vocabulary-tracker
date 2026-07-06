@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class SearchViewModel @Inject constructor(
+class WordsViewModel @Inject constructor(
     private val searchWordsUseCase: SearchWordsUseCase,
     private val getWordsByMasteryUseCase: GetWordsByMasteryUseCase,
     private val toggleFocusWordUseCase: ToggleFocusWordUseCase

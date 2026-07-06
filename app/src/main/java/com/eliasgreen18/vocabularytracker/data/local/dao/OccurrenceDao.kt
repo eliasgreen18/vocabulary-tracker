@@ -92,10 +92,30 @@ interface OccurrenceDao {
 
     @Query("""
         SELECT 
+            w.id as wordId,
+            w.text as wordText, 
+            COUNT(CASE WHEN rs.chapterId = :chapterId THEN 1 END) as sessionCount,
+            (SELECT COUNT(*) FROM occurrences o2 WHERE o2.wordId = w.id) as globalCount,
+            w.isFocusWord as isFocusWord,
+            w.translation as translation,
+            w.translationStatus as translationStatus
+        FROM occurrences o
+        JOIN words w ON o.wordId = w.id
+        JOIN reading_sessions rs ON o.sessionId = rs.id
+        WHERE rs.chapterId = :chapterId
+        GROUP BY w.id
+        ORDER BY MAX(o.createdAt) DESC
+    """)
+    fun getChapterWordsWithCounts(chapterId: Long): Flow<List<WordWithCountEntity>>
+
+    @Query("""
+        SELECT 
             o.createdAt,
             b.title as bookTitle,
+            b.language as bookLanguage,
             c.number as chapterNumber,
-            c.title as chapterTitle
+            c.title as chapterTitle,
+            o.sessionId as sessionId
         FROM occurrences o
         JOIN reading_sessions rs ON o.sessionId = rs.id
         JOIN chapters c ON rs.chapterId = c.id

@@ -122,6 +122,16 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE words ADD COLUMN nextReviewAt INTEGER")
+            db.execSQL("ALTER TABLE words ADD COLUMN lastSrsReviewAt INTEGER")
+            db.execSQL("ALTER TABLE words ADD COLUMN reviewCount INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE words ADD COLUMN successfulReviews INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE words ADD COLUMN currentIntervalDays INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocabularyDatabase {
@@ -130,7 +140,7 @@ object DatabaseModule {
             VocabularyDatabase::class.java,
             "vocabulary_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
         .fallbackToDestructiveMigration()
         .build()
     }

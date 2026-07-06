@@ -3,22 +3,30 @@ package com.eliasgreen18.vocabularytracker.ui.words
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
+import com.eliasgreen18.vocabularytracker.domain.model.WordDetailUiState
+import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordOccurrenceDetail
 import com.eliasgreen18.vocabularytracker.ui.util.ExternalTranslationHelper
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,191 +34,370 @@ fun WordDetailScreen(
     onNavigateBack: () -> Unit,
     viewModel: WordDetailViewModel = hiltViewModel()
 ) {
-    val word by viewModel.word.collectAsState()
-    val history by viewModel.history.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     
-    var showManualEdit by remember { mutableStateOf(false) }
-    var manualTranslation by remember { mutableStateOf("") }
-
-    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+        .withZone(ZoneId.systemDefault())
+    val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
         .withZone(ZoneId.systemDefault())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(word?.text ?: "Word Detail") },
+                title = { Text("Word Detail") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    uiState?.let { state ->
+                        IconButton(onClick = { viewModel.toggleFocus(!state.word.isFocusWord) }) {
+                            Icon(
+                                imageVector = if (state.word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "Favorite",
+                                tint = if (state.word.isFocusWord) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                            )
+                        }
                     }
                 }
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            word?.let { w ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "Translation", style = MaterialTheme.typography.labelMedium)
-                            IconButton(onClick = { 
-                                manualTranslation = w.translation ?: ""
-                                showManualEdit = true 
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit Manual", modifier = Modifier.size(16.dp))
-                            }
-                        }
+        uiState?.let { state ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Header: Word + Mastery + Language
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = state.word.text,
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        
-                        when (w.translationStatus) {
-                            TranslationStatus.DONE -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            MasteryBadge(mastery = state.mastery)
+                            state.mainLanguage?.let { lang ->
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = w.translation ?: "No translation",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold
+                                    text = lang.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    letterSpacing = 1.sp
                                 )
                             }
-                            TranslationStatus.LOADING, TranslationStatus.PENDING -> {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = "Translating...", style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                            TranslationStatus.ERROR -> {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "Error translating",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    IconButton(onClick = { viewModel.retryTranslation() }) {
-                                        Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                                    }
-                                }
-                            }
-                            TranslationStatus.NOT_REQUESTED -> {
-                                Text(
-                                    text = "Translation will trigger after 3 occurrences.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(text = "Quick Search", style = MaterialTheme.typography.labelSmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AssistChip(
-                                onClick = { ExternalTranslationHelper.openGoogleTranslate(context, w.text) },
-                                label = { Text("Google Translate") },
-                                leadingIcon = { Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            )
-                            AssistChip(
-                                onClick = { ExternalTranslationHelper.openReversoContext(context, w.text) },
-                                label = { Text("Reverso") },
-                                leadingIcon = { Icon(Icons.Default.ManageSearch, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            )
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
-            Button(
-                onClick = { /* Placeholder for future mastery logic */ },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
-            ) {
-                Icon(Icons.Default.Check, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("I already know this word")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Occurrences (${history.size})",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(history) { detail ->
-                    HistoryItem(detail, dateFormatter)
+                // Quick Stats Grid
+                item {
+                    QuickStatsGrid(state)
                 }
+
+                // Memory Performance (SRS)
+                item {
+                    MemoryPerformanceCard(state)
+                }
+
+                // Translation Placeholder
+                item {
+                    TranslationCard(state)
+                }
+
+                // Timeline Section
+                item {
+                    TimelineCard(state, dateFormatter)
+                }
+
+                // Action Hub (External)
+                item {
+                    ExternalResourcesSection(state.word.text, context)
+                }
+
+                // Future Placeholders
+                item {
+                    FuturePlaceholdersSection()
+                }
+
+                // History Feed
+                item {
+                    Text(
+                        text = "Appearance History",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                items(state.history) { occurrence ->
+                    HistoryCard(occurrence, dateTimeFormatter)
+                }
+
+                item { Spacer(modifier = Modifier.height(32.dp)) }
+            }
+        } ?: run {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
+    }
+}
 
-        if (showManualEdit) {
-            AlertDialog(
-                onDismissRequest = { showManualEdit = false },
-                title = { Text("Edit Translation") },
-                text = {
-                    TextField(
-                        value = manualTranslation,
-                        onValueChange = { manualTranslation = it },
-                        label = { Text("Translation") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        viewModel.saveManualTranslation(manualTranslation)
-                        showManualEdit = false
-                    }) {
-                        Text("Save")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showManualEdit = false }) {
-                        Text("Cancel")
-                    }
+@Composable
+fun QuickStatsGrid(state: WordDetailUiState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        DetailStatItem(label = "Appearances", value = state.totalOccurrences.toString(), icon = Icons.Default.BarChart)
+        DetailStatItem(label = "Books", value = state.bookCount.toString(), icon = Icons.AutoMirrored.Filled.MenuBook)
+        DetailStatItem(label = "Chapters", value = state.chapterCount.toString(), icon = Icons.Default.Bookmarks)
+    }
+}
+
+@Composable
+fun MemoryPerformanceCard(state: WordDetailUiState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Memory Performance", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Next Review", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    val nextText = state.nextReviewDate?.let {
+                        val days = ChronoUnit.DAYS.between(Instant.now(), it)
+                        when {
+                            days < 0 -> "Overdue"
+                            days == 0L -> "Today"
+                            days == 1L -> "Tomorrow"
+                            else -> "In $days days"
+                        }
+                    } ?: "Not Scheduled"
+                    Text(text = nextText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Memory Strength", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(text = "${state.currentInterval} day interval", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = { state.recallAccuracy / 100f },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                color = if (state.recallAccuracy > 70) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${state.recallAccuracy}% Recall Accuracy (${state.successCount} hits / ${state.failCount} misses)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline
             )
         }
     }
 }
 
 @Composable
-fun HistoryItem(detail: WordOccurrenceDetail, formatter: DateTimeFormatter) {
+fun TranslationCard(state: WordDetailUiState) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = detail.bookTitle, style = MaterialTheme.typography.titleMedium)
-            Text(text = detail.displayChapter, style = MaterialTheme.typography.bodyMedium)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Translation", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Seen on: ${formatter.format(detail.createdAt)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = state.word.translation ?: "No translation available",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (state.word.translation != null) FontWeight.Bold else FontWeight.Normal,
+                fontStyle = if (state.word.translation == null) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal
+            )
+        }
+    }
+}
+
+@Composable
+fun TimelineCard(state: WordDetailUiState, formatter: DateTimeFormatter) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("First encounter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    text = state.firstSeen?.let { formatter.format(it) } ?: "Never",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Text("Last encounter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    text = state.lastSeen?.let { formatter.format(it) } ?: "Never",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ExternalResourcesSection(text: String, context: android.content.Context) {
+    Column {
+        Text("Quick Lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { ExternalTranslationHelper.openGoogleTranslate(context, text) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Google", style = MaterialTheme.typography.labelLarge)
+            }
+            Button(
+                onClick = { ExternalTranslationHelper.openReversoContext(context, text) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reverso", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+@Composable
+fun FuturePlaceholdersSection() {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PlaceholderSection(title = "Pronunciation (IPA)", icon = Icons.AutoMirrored.Filled.VolumeUp)
+        PlaceholderSection(title = "Notes & Examples", icon = Icons.AutoMirrored.Filled.NoteAdd)
+    }
+}
+
+@Composable
+fun MasteryBadge(mastery: WordMastery) {
+    val (color, icon) = when (mastery) {
+        WordMastery.NEW -> MaterialTheme.colorScheme.outline to Icons.Default.FiberNew
+        WordMastery.LEARNING -> MaterialTheme.colorScheme.primary to Icons.Default.AutoStories
+        WordMastery.LEARNED -> Color(0xFF4CAF50) to Icons.Default.CheckCircle
+    }
+    
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        contentColor = color,
+        shape = CircleShape,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(text = mastery.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun DetailStatItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+            shape = CircleShape,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+    }
+}
+
+@Composable
+fun HistoryCard(occurrence: WordOccurrenceDetail, formatter: DateTimeFormatter) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outline)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = occurrence.bookTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = occurrence.displayChapter,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "• ${occurrence.displaySession}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = formatter.format(occurrence.createdAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun PlaceholderSection(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.bodyMedium, 
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
             )
         }
     }

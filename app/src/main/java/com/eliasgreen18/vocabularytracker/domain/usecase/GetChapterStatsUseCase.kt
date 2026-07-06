@@ -13,7 +13,7 @@ class GetChapterStatsUseCase @Inject constructor(
     operator fun invoke(chapterId: Long): Flow<ChapterStats> {
         return combine(
             repository.getTopWordsForChapter(chapterId, 10),
-            repository.getSessionWords(chapterId) // Reusing session words logic for the chapter
+            repository.getChapterWords(chapterId)
         ) { topWords, allWordsInChapter ->
             ChapterStats(
                 chapterId = chapterId,

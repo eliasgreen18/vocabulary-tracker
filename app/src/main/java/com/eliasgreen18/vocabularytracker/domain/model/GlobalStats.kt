@@ -6,5 +6,14 @@ data class GlobalStats(
     val newWordsCount: Int,
     val learningWordsCount: Int,
     val learnedWordsCount: Int,
-    val translatedWordsCount: Int
-)
+    val translatedWordsCount: Int,
+    // SRS Stats
+    val totalReviewsDone: Int,
+    val successfulReviews: Int,
+    val totalReviewAttempts: Int
+) {
+    val recallAccuracy: Int
+        get() = if (totalReviewAttempts > 0) {
+            (successfulReviews * 100) / totalReviewAttempts
+        } else 0
+}

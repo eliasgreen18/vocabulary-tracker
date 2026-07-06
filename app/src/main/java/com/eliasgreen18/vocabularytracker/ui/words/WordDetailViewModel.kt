@@ -3,12 +3,8 @@ package com.eliasgreen18.vocabularytracker.ui.words
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eliasgreen18.vocabularytracker.domain.model.Word
-import com.eliasgreen18.vocabularytracker.domain.model.WordOccurrenceDetail
-import com.eliasgreen18.vocabularytracker.domain.repository.WordRepository
-import com.eliasgreen18.vocabularytracker.domain.usecase.GetWordHistoryUseCase
-import com.eliasgreen18.vocabularytracker.domain.usecase.RetryTranslationUseCase
-import com.eliasgreen18.vocabularytracker.domain.usecase.SaveManualTranslationUseCase
+import com.eliasgreen18.vocabularytracker.domain.model.WordDetailUiState
+import com.eliasgreen18.vocabularytracker.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -17,31 +13,30 @@ import javax.inject.Inject
 @HiltViewModel
 class WordDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    wordRepository: WordRepository,
-    getWordHistoryUseCase: GetWordHistoryUseCase,
+    getWordDetailUseCase: GetWordDetailUseCase,
+    private val toggleFocusWordUseCase: ToggleFocusWordUseCase,
     private val retryTranslationUseCase: RetryTranslationUseCase,
     private val saveManualTranslationUseCase: SaveManualTranslationUseCase
 ) : ViewModel() {
 
     private val wordId: Long = checkNotNull(savedStateHandle["wordId"])
 
-    val word: StateFlow<Word?> = wordRepository.getWordByIdFlow(wordId)
+    val uiState: StateFlow<WordDetailUiState?> = getWordDetailUseCase(wordId)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
 
-    val history: StateFlow<List<WordOccurrenceDetail>> = getWordHistoryUseCase(wordId)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    fun toggleFocus(isFocus: Boolean) {
+        viewModelScope.launch {
+            toggleFocusWordUseCase(wordId, isFocus)
+        }
+    }
 
     fun retryTranslation() {
         viewModelScope.launch {
-            word.value?.let { retryTranslationUseCase(it) }
+            uiState.value?.word?.let { retryTranslationUseCase(it) }
         }
     }
 

@@ -74,6 +74,24 @@ interface WordDao {
     suspend fun markNotRemembered(wordId: Long)
 
     @Query("""
+        UPDATE words 
+        SET nextReviewAt = :nextReviewAt, 
+            lastSrsReviewAt = :lastReviewAt, 
+            reviewCount = :reviewCount, 
+            successfulReviews = :successfulReviews, 
+            currentIntervalDays = :currentIntervalDays 
+        WHERE id = :wordId
+    """)
+    suspend fun updateSrsMetadata(
+        wordId: Long,
+        nextReviewAt: Long?,
+        lastReviewAt: Long?,
+        reviewCount: Int,
+        successfulReviews: Int,
+        currentIntervalDays: Int
+    )
+
+    @Query("""
         SELECT 
             w.id as wordId,
             w.text as wordText,
@@ -83,7 +101,9 @@ interface WordDao {
             w.reviewPriority as reviewPriority,
             b.title as lastBookTitle,
             c.number as lastChapterNumber,
-            c.title as lastChapterTitle
+            c.title as lastChapterTitle,
+            w.currentIntervalDays as currentIntervalDays,
+            w.nextReviewAt as nextReviewAt
         FROM words w
         LEFT JOIN (
             SELECT wordId, sessionId, MAX(createdAt) 
@@ -94,8 +114,17 @@ interface WordDao {
         LEFT JOIN chapters c ON rs.chapterId = c.id
         LEFT JOIN books b ON c.bookId = b.id
         WHERE (globalCount >= 3 OR w.isFocusWord = 1)
-        AND (w.lastReviewedAt IS NULL OR w.lastReviewedAt < :startOfToday)
+        AND (w.nextReviewAt IS NULL OR w.nextReviewAt <= :now)
         ORDER BY w.reviewPriority DESC, globalCount DESC, w.id ASC
     """)
-    fun getReviewQueue(startOfToday: Long): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.ReviewWordEntity>>
+    fun getDueWords(now: Long): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.ReviewWordEntity>>
+
+    @Query("SELECT COUNT(*) FROM words WHERE reviewCount > 0")
+    fun getTotalReviewsDoneCount(): Flow<Int>
+
+    @Query("SELECT SUM(successfulReviews) FROM words")
+    fun getTotalSuccessfulReviewsCount(): Flow<Int>
+
+    @Query("SELECT SUM(reviewCount) FROM words")
+    fun getTotalReviewAttemptsCount(): Flow<Int>
 }

@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.domain.model.ChapterStats
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
+import com.eliasgreen18.vocabularytracker.domain.repository.WordRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetChapterStatsUseCase
-import com.eliasgreen18.vocabularytracker.domain.usecase.GetSessionOccurrencesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
@@ -15,7 +15,7 @@ import javax.inject.Inject
 class ChapterDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     getChapterStatsUseCase: GetChapterStatsUseCase,
-    getSessionOccurrencesUseCase: GetSessionOccurrencesUseCase
+    private val wordRepository: WordRepository
 ) : ViewModel() {
 
     private val chapterId: Long = checkNotNull(savedStateHandle["chapterId"])
@@ -27,7 +27,7 @@ class ChapterDetailViewModel @Inject constructor(
             initialValue = null
         )
 
-    val words: StateFlow<List<WordWithCount>> = getSessionOccurrencesUseCase(chapterId) // Using chapterId as sessionId works because mapping is consistent
+    val words: StateFlow<List<WordWithCount>> = wordRepository.getChapterWords(chapterId)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

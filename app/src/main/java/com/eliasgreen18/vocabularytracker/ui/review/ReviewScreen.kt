@@ -1,31 +1,44 @@
 package com.eliasgreen18.vocabularytracker.ui.review
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.eliasgreen18.vocabularytracker.domain.model.ReviewWord
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToWordDetail: (Long) -> Unit,
     viewModel: ReviewViewModel = hiltViewModel()
 ) {
     val currentWord by viewModel.currentWord.collectAsState()
     val currentIndex by viewModel.currentIndex.collectAsState()
     val totalToReview by viewModel.totalToReview.collectAsState()
+    val feedback by viewModel.lastReviewFeedback.collectAsState()
+
+    var showFeedback by remember { mutableStateOf(false) }
+
+    LaunchedEffect(feedback) {
+        if (feedback != null) {
+            showFeedback = true
+            delay(1500)
+            showFeedback = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -52,24 +65,27 @@ fun ReviewScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "${currentIndex + 1} / $totalToReview",
+                        text = "${currentIndex + 1} / $totalToReview DUE TODAY",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
                         text = word.wordText,
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .clickable { onNavigateToWordDetail(word.wordId) }
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Seen ${word.globalCount} times",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Tap to see history",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = "Last seen in:\n${word.lastContext}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -93,34 +109,61 @@ fun ReviewScreen(
                         ) {
                             Icon(Icons.Default.Close, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("I forgot")
+                            Text("Forgot")
                         }
                         
                         Button(
                             onClick = { viewModel.onRemembered() },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White
                             ),
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         ) {
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("I remember")
+                            Text("Remembered")
                         }
                     }
                 }
             } ?: run {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Review session completed!",
+                        text = "All caught up!",
                         style = MaterialTheme.typography.headlineMedium,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "You've reviewed all pending words for today.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = onNavigateBack) {
-                        Text("Back to Home")
+                        Text("Back to Dashboard")
                     }
+                }
+            }
+
+            // Transient Feedback Overlay
+            AnimatedVisibility(
+                visible = showFeedback,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 120.dp)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 6.dp
+                ) {
+                    Text(
+                        text = feedback ?: "",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

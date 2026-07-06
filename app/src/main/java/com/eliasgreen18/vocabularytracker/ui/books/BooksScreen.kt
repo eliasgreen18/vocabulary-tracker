@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,27 +17,15 @@ import com.eliasgreen18.vocabularytracker.domain.model.Book
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BooksScreen(
-    onNavigateBack: () -> Unit,
-    onNavigateToSession: (Long) -> Unit,
+    onNavigateToBookDetail: (Long) -> Unit,
     viewModel: BookViewModel = hiltViewModel()
 ) {
     val books by viewModel.booksState.collectAsState()
     var showAddBookDialog by remember { mutableStateOf(false) }
-    
-    // State for Session Start Flow
-    var bookForSession by remember { mutableStateOf<Book?>(null) }
-    var chapterNumberToAskTitle by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("My Books") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+            TopAppBar(title = { Text("My Library") })
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddBookDialog = true }) {
@@ -52,7 +40,7 @@ fun BooksScreen(
                     .padding(innerPadding),
                 contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
-                Text("No books added yet.")
+                Text("Your library is empty. Add your first book!")
             }
         } else {
             LazyColumn(
@@ -63,14 +51,7 @@ fun BooksScreen(
                 items(books) { book ->
                     BookItem(
                         book = book,
-                        onClick = {
-                            viewModel.onBookClicked(
-                                book = book,
-                                onSessionReady = onNavigateToSession,
-                                onAskChapterNumber = { bookForSession = it },
-                                onNeedChapterInfo = { _, _ -> /* Not used anymore */ }
-                            )
-                        }
+                        onClick = { onNavigateToBookDetail(book.id) }
                     )
                 }
             }
@@ -85,146 +66,21 @@ fun BooksScreen(
                 }
             )
         }
-
-        // Phase 1: Ask Chapter Number
-        bookForSession?.let { book ->
-            AskChapterNumberDialog(
-                bookTitle = book.title,
-                onDismiss = { bookForSession = null },
-                onConfirm = { number ->
-                    viewModel.onChapterNumberEntered(
-                        bookId = book.id,
-                        number = number,
-                        onExists = { sessionId ->
-                            bookForSession = null
-                            onNavigateToSession(sessionId)
-                        },
-                        onNew = { confirmedNumber ->
-                            chapterNumberToAskTitle = confirmedNumber
-                            // Don't null bookForSession yet, we need it for Phase 2
-                        }
-                    )
-                }
-            )
-        }
-
-        // Phase 2: Ask Chapter Title (only if number was new)
-        chapterNumberToAskTitle?.let { number ->
-            val book = bookForSession ?: return@let 
-            AskChapterTitleDialog(
-                bookTitle = book.title,
-                chapterNumber = number,
-                onDismiss = { 
-                    chapterNumberToAskTitle = null
-                    bookForSession = null 
-                },
-                onConfirm = { title ->
-                    viewModel.startSessionWithNewChapter(book.id, number, title) { sessionId ->
-                        chapterNumberToAskTitle = null
-                        bookForSession = null
-                        onNavigateToSession(sessionId)
-                    }
-                }
-            )
-        }
     }
 }
 
 @Composable
 fun BookItem(book: Book, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = book.title, style = MaterialTheme.typography.titleMedium)
-            if (book.author.isNotBlank()) {
-                Text(text = "by ${book.author}", style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(text = "Language: ${book.language}", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AskChapterNumberDialog(
-    bookTitle: String,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
-) {
-    var number by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Start Session: $bookTitle") },
-        text = {
-            Column {
-                Text("Which chapter number are you reading?")
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = number,
-                    onValueChange = { if (it.all { char -> char.isDigit() }) number = it },
-                    label = { Text("Chapter Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                    )
-                )
-            }
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        headlineContent = { Text(book.title) },
+        supportingContent = { 
+            val authorPart = if (book.author.isNotBlank()) "by ${book.author} • " else ""
+            Text("$authorPart${book.language}") 
         },
-        confirmButton = {
-            Button(
-                onClick = { number.toIntOrNull()?.let(onConfirm) },
-                enabled = number.isNotBlank()
-            ) {
-                Text("Next")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) }
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AskChapterTitleDialog(
-    bookTitle: String,
-    chapterNumber: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit
-) {
-    var title by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Chapter for $bookTitle") },
-        text = {
-            Column {
-                Text("Chapter $chapterNumber is new. Want to add a title?")
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Chapter Title (optional)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(title.ifBlank { null }) }) {
-                Text("Start Reading")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
+    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

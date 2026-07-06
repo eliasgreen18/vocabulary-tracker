@@ -5,8 +5,10 @@ import java.time.Instant
 data class WordOccurrenceDetail(
     val createdAt: Instant,
     val bookTitle: String,
+    val bookLanguage: String,
     val chapterNumber: Int,
-    val chapterTitle: String?
+    val chapterTitle: String?,
+    val sessionId: Long
 ) {
     val displayChapter: String
         get() = if (chapterTitle.isNullOrBlank()) {
@@ -14,4 +16,7 @@ data class WordOccurrenceDetail(
         } else {
             "Chapter $chapterNumber: $chapterTitle"
         }
+    
+    val displaySession: String
+        get() = "Session #$sessionId"
 }

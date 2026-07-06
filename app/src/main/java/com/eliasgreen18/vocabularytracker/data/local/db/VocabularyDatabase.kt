@@ -14,7 +14,7 @@ import com.eliasgreen18.vocabularytracker.data.local.entity.*
         WordEntity::class,
         OccurrenceEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

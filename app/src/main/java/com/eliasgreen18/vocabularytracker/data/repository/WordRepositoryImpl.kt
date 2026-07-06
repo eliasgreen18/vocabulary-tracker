@@ -35,8 +35,28 @@ class WordRepositoryImpl @Inject constructor(
         return occurrenceDao.insertOccurrence(occurrence.toEntity())
     }
 
+    override fun getOccurrenceCountForWord(wordId: Long): Flow<Int> {
+        return occurrenceDao.getOccurrenceCountForWord(wordId)
+    }
+
     override fun getSessionWords(sessionId: Long): Flow<List<WordWithCount>> {
         return occurrenceDao.getSessionWordsWithCounts(sessionId).map { entities ->
+            entities.map { 
+                WordWithCount(
+                    wordId = it.wordId,
+                    wordText = it.wordText,
+                    sessionCount = it.sessionCount,
+                    globalCount = it.globalCount,
+                    isFocusWord = it.isFocusWord,
+                    translation = it.translation,
+                    translationStatus = TranslationStatus.valueOf(it.translationStatus)
+                )
+            }
+        }
+    }
+
+    override fun getChapterWords(chapterId: Long): Flow<List<WordWithCount>> {
+        return occurrenceDao.getChapterWordsWithCounts(chapterId).map { entities ->
             entities.map { 
                 WordWithCount(
                     wordId = it.wordId,
@@ -57,8 +77,10 @@ class WordRepositoryImpl @Inject constructor(
                 WordOccurrenceDetail(
                     createdAt = it.createdAt,
                     bookTitle = it.bookTitle,
+                    bookLanguage = it.bookLanguage,
                     chapterNumber = it.chapterNumber,
-                    chapterTitle = it.chapterTitle
+                    chapterTitle = it.chapterTitle,
+                    sessionId = it.sessionId
                 )
             }
         }
@@ -106,6 +128,72 @@ class WordRepositoryImpl @Inject constructor(
 
     override fun getUniqueWordsCountSince(timestamp: Long): Flow<Int> {
         return occurrenceDao.getUniqueWordsCountSince(timestamp)
+    }
+
+    override suspend fun updateTranslation(wordId: Long, translation: String?, status: TranslationStatus) {
+        wordDao.updateTranslation(wordId, translation, status.name)
+    }
+
+    override fun getPendingTranslations(): Flow<List<Word>> {
+        return wordDao.getPendingTranslations().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getDueWords(now: Long): Flow<List<ReviewWord>> {
+        return wordDao.getDueWords(now).map { entities ->
+            entities.map { 
+                ReviewWord(
+                    wordId = it.wordId,
+                    wordText = it.wordText,
+                    globalCount = it.globalCount,
+                    isFocusWord = it.isFocusWord,
+                    lastReviewedAt = it.lastReviewedAt,
+                    reviewPriority = it.reviewPriority,
+                    lastContext = formatContext(it.lastBookTitle, it.lastChapterNumber, it.lastChapterTitle),
+                    currentIntervalDays = it.currentIntervalDays,
+                    nextReviewAt = it.nextReviewAt
+                )
+            }
+        }
+    }
+
+    override suspend fun markWordReviewed(wordId: Long, timestamp: Long) {
+        wordDao.markReviewed(wordId, timestamp)
+    }
+
+    override suspend fun markWordNotRemembered(wordId: Long) {
+        wordDao.markNotRemembered(wordId)
+    }
+
+    override suspend fun updateSrsMetadata(
+        wordId: Long,
+        nextReviewAt: java.time.Instant,
+        lastReviewAt: java.time.Instant,
+        reviewCount: Int,
+        successfulReviews: Int,
+        currentIntervalDays: Int
+    ) {
+        wordDao.updateSrsMetadata(
+            wordId,
+            nextReviewAt.toEpochMilli(),
+            lastReviewAt.toEpochMilli(),
+            reviewCount,
+            successfulReviews,
+            currentIntervalDays
+        )
+    }
+
+    override fun getTotalReviewsDoneCount(): Flow<Int> {
+        return wordDao.getTotalReviewsDoneCount()
+    }
+
+    override fun getTotalSuccessfulReviewsCount(): Flow<Int> {
+        return wordDao.getTotalSuccessfulReviewsCount()
+    }
+
+    override fun getTotalReviewAttemptsCount(): Flow<Int> {
+        return wordDao.getTotalReviewAttemptsCount()
     }
 
     override fun getTotalOccurrencesCount(): Flow<Int> {
@@ -162,40 +250,6 @@ class WordRepositoryImpl @Inject constructor(
                 )
             }
         }
-    }
-
-    override suspend fun updateTranslation(wordId: Long, translation: String?, status: TranslationStatus) {
-        wordDao.updateTranslation(wordId, translation, status.name)
-    }
-
-    override fun getPendingTranslations(): Flow<List<Word>> {
-        return wordDao.getPendingTranslations().map { entities ->
-            entities.map { it.toDomain() }
-        }
-    }
-
-    override fun getReviewQueue(startOfToday: Long): Flow<List<ReviewWord>> {
-        return wordDao.getReviewQueue(startOfToday).map { entities ->
-            entities.map { 
-                ReviewWord(
-                    wordId = it.wordId,
-                    wordText = it.wordText,
-                    globalCount = it.globalCount,
-                    isFocusWord = it.isFocusWord,
-                    lastReviewedAt = it.lastReviewedAt,
-                    reviewPriority = it.reviewPriority,
-                    lastContext = formatContext(it.lastBookTitle, it.lastChapterNumber, it.lastChapterTitle)
-                )
-            }
-        }
-    }
-
-    override suspend fun markWordReviewed(wordId: Long, timestamp: Long) {
-        wordDao.markReviewed(wordId, timestamp)
-    }
-
-    override suspend fun markWordNotRemembered(wordId: Long) {
-        wordDao.markNotRemembered(wordId)
     }
 
     private fun formatContext(book: String?, chapterNum: Int?, chapterTitle: String?): String {

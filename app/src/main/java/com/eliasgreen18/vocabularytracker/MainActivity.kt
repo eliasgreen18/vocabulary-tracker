@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.eliasgreen18.vocabularytracker.domain.usecase.ProcessPendingTranslationsUseCase
-import com.eliasgreen18.vocabularytracker.navigation.VocabularyNavGraph
+import com.eliasgreen18.vocabularytracker.ui.MainContainer
 import com.eliasgreen18.vocabularytracker.ui.theme.VocabularyTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -21,14 +21,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Auto-translation processing disabled for stabilization
+        /*
         lifecycleScope.launch {
             processPendingTranslationsUseCase()
         }
+        */
 
         enableEdgeToEdge()
         setContent {
             VocabularyTrackerTheme {
-                VocabularyNavGraph()
+                MainContainer()
             }
         }
     }
