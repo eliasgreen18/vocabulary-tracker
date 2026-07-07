@@ -57,45 +57,65 @@ fun MainContainer(
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->
-                    when (item) {
+                    val isSelected = when (item) {
                         is NavItem.ScreenItem -> {
-                            NavigationBarItem(
-                                icon = { Icon(item.icon, contentDescription = item.label) },
-                                label = { Text(item.label) },
-                                selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
-                                onClick = {
-                                    navController.navigate(item.screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                            val currentRoute = currentDestination?.route ?: ""
+                            when (item.screen.route) {
+                                Screen.Search.route -> currentRoute == Screen.Search.route || currentRoute.startsWith("word/")
+                                Screen.Books.route -> currentRoute == Screen.Books.route || currentRoute.startsWith("book/") || currentRoute.startsWith("chapter/")
+                                Screen.Review.route -> currentRoute == Screen.Review.route
+                                Screen.Home.route -> currentRoute == Screen.Home.route
+                                else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                            }
+                        }
+                        is NavItem.ActionItem -> currentDestination?.hierarchy?.any { it.route?.startsWith("session/") == true } == true
+                    }
+
+                    NavigationBarItem(
+                        icon = { 
+                            when (item) {
+                                is NavItem.ScreenItem -> Icon(item.icon, contentDescription = item.label)
+                                is NavItem.ActionItem -> Icon(
+                                    Icons.AutoMirrored.Filled.MenuBook, 
+                                    contentDescription = "Read",
+                                    tint = if (activeSessionId != null) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                )
+                            }
+                        },
+                        label = { 
+                            Text(if (item is NavItem.ScreenItem) item.label else "Read") 
+                        },
+                        selected = isSelected,
+                        onClick = {
+                            when (item) {
+                                is NavItem.ScreenItem -> {
+                                    if (isSelected) {
+                                        // Reset the tab: navigate back to its own route
+                                        navController.navigate(item.screen.route) {
+                                            popUpTo(item.screen.route) { inclusive = true }
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    } else {
+                                        // Standard cross-tab navigation WITHOUT state restoration
+                                        // This ensures we always land on the root of the tab
+                                        navController.navigate(item.screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = false 
+                                        }
                                     }
                                 }
-                            )
-                        }
-                        is NavItem.ActionItem -> {
-                            NavigationBarItem(
-                                icon = { 
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.MenuBook, 
-                                        contentDescription = "Read",
-                                        tint = if (activeSessionId != null) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                                    ) 
-                                },
-                                label = { Text("Read") },
-                                selected = currentDestination?.hierarchy?.any { it.route?.startsWith("session/") == true } == true,
-                                onClick = {
+                                is NavItem.ActionItem -> {
                                     activeSessionId?.let { id ->
                                         navController.navigate(Screen.ActiveSession.createRoute(id))
                                     } ?: run {
-                                        // If no active session, go to Books to pick one
                                         navController.navigate(Screen.Books.route)
                                     }
                                 }
-                            )
+                            }
                         }
-                    }
+                    )
                 }
             }
         }
@@ -121,7 +141,15 @@ fun MainContainer(
             }
             composable(Screen.Review.route) {
                 ReviewScreen(
-                    onNavigateBack = { /* Stay on tab */ },
+                    onNavigateBack = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     onNavigateToWordDetail = { wordId ->
                         navController.navigate(Screen.WordDetail.createRoute(wordId))
                     }
@@ -135,7 +163,7 @@ fun MainContainer(
                 )
             }
             
-            // Details & Flows (NOT part of bottom bar items but in the same NavHost)
+            // Details & Flows
             composable(
                 route = Screen.BookDetail.route,
                 arguments = listOf(navArgument("bookId") { type = NavType.LongType })

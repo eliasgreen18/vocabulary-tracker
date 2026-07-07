@@ -1,6 +1,7 @@
 package com.eliasgreen18.vocabularytracker.di
 
 import com.eliasgreen18.vocabularytracker.data.remote.LibreTranslateService
+import com.eliasgreen18.vocabularytracker.data.remote.LocalDictionaryService
 import com.eliasgreen18.vocabularytracker.data.remote.MockTranslationService
 import com.eliasgreen18.vocabularytracker.data.remote.api.LibreTranslateApi
 import com.eliasgreen18.vocabularytracker.domain.repository.TranslationService
@@ -19,9 +20,10 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
     
-    // Switch to a faster/more reliable public instance
     private const val BASE_URL = "https://translate.terraprint.co/"
-    private const val USE_MOCK = false
+    
+    // Providers: MOCK, LIBRE, LOCAL
+    private const val PROVIDER = "LOCAL" 
 
     @Provides
     @Singleton
@@ -62,12 +64,14 @@ object NetworkModule {
     @Singleton
     fun provideTranslationService(
         mockService: MockTranslationService,
-        realService: LibreTranslateService
+        libreService: LibreTranslateService,
+        localService: LocalDictionaryService
     ): TranslationService {
-        return if (USE_MOCK) {
-            mockService
-        } else {
-            realService
+        return when(PROVIDER) {
+            "MOCK" -> mockService
+            "LIBRE" -> libreService
+            "LOCAL" -> localService
+            else -> localService
         }
     }
 }

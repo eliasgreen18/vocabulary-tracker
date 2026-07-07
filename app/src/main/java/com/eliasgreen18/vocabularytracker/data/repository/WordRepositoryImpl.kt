@@ -31,8 +31,24 @@ class WordRepositoryImpl @Inject constructor(
         return wordDao.insertWord(word.toEntity())
     }
 
+    override suspend fun updateWordText(wordId: Long, newText: String) {
+        wordDao.updateWordText(wordId, newText)
+    }
+
+    override suspend fun deleteWord(wordId: Long) {
+        wordDao.deleteWord(wordId)
+    }
+
     override suspend fun insertOccurrence(occurrence: Occurrence): Long {
         return occurrenceDao.insertOccurrence(occurrence.toEntity())
+    }
+
+    override suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long) {
+        occurrenceDao.deleteLatestOccurrenceInSession(wordId, sessionId)
+    }
+
+    override suspend fun getOccurrenceCountSync(wordId: Long): Int {
+        return occurrenceDao.getOccurrenceCountSync(wordId)
     }
 
     override fun getOccurrenceCountForWord(wordId: Long): Flow<Int> {

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
+import com.eliasgreen18.vocabularytracker.data.local.dictionary.DictionaryInitializer
 import com.eliasgreen18.vocabularytracker.domain.usecase.ProcessPendingTranslationsUseCase
 import com.eliasgreen18.vocabularytracker.ui.MainContainer
 import com.eliasgreen18.vocabularytracker.ui.theme.VocabularyTrackerTheme
@@ -16,11 +17,15 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     
     @Inject
-    lateinit var processPendingTranslationsUseCase: ProcessPendingTranslationsUseCase
+    lateinit var dictionaryInitializer: DictionaryInitializer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        lifecycleScope.launch {
+            dictionaryInitializer.initializeIfNeeded(applicationContext)
+        }
+
         // Auto-translation processing disabled for stabilization
         /*
         lifecycleScope.launch {

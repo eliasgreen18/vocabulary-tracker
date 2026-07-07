@@ -11,7 +11,11 @@ interface WordRepository {
     suspend fun getWordById(id: Long): Word?
     fun getWordByIdFlow(id: Long): Flow<Word?>
     suspend fun insertWord(word: Word): Long
+    suspend fun updateWordText(wordId: Long, newText: String)
+    suspend fun deleteWord(wordId: Long)
     suspend fun insertOccurrence(occurrence: Occurrence): Long
+    suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long)
+    suspend fun getOccurrenceCountSync(wordId: Long): Int
     fun getOccurrenceCountForWord(wordId: Long): Flow<Int>
     fun getSessionWords(sessionId: Long): Flow<List<WordWithCount>>
     fun getChapterWords(chapterId: Long): Flow<List<WordWithCount>>

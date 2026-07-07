@@ -24,6 +24,8 @@ class SessionViewModel @Inject constructor(
     private val getWordsByMasteryUseCase: GetWordsByMasteryUseCase,
     private val getHighlightedWordsUseCase: GetHighlightedWordsUseCase,
     private val toggleFocusWordUseCase: ToggleFocusWordUseCase,
+    private val deleteLatestSessionOccurrenceUseCase: DeleteLatestSessionOccurrenceUseCase,
+    private val renameWordUseCase: RenameWordUseCase,
     getSessionOccurrencesUseCase: GetSessionOccurrencesUseCase
 ) : ViewModel() {
 
@@ -109,6 +111,18 @@ class SessionViewModel @Inject constructor(
     fun toggleFocus(wordId: Long, isFocus: Boolean) {
         viewModelScope.launch {
             toggleFocusWordUseCase(wordId, isFocus)
+        }
+    }
+
+    fun deleteFromSession(wordId: Long) {
+        viewModelScope.launch {
+            deleteLatestSessionOccurrenceUseCase(wordId, sessionId)
+        }
+    }
+
+    fun renameWord(wordId: Long, newText: String) {
+        viewModelScope.launch {
+            renameWordUseCase(wordId, newText)
         }
     }
 

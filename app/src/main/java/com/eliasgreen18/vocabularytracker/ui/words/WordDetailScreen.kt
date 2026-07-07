@@ -1,5 +1,6 @@
 package com.eliasgreen18.vocabularytracker.ui.words
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +38,10 @@ fun WordDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     
+    var showEditWordDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var wordTextToEdit by remember { mutableStateOf("") }
+
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
         .withZone(ZoneId.systemDefault())
     val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
@@ -53,12 +58,21 @@ fun WordDetailScreen(
                 },
                 actions = {
                     uiState?.let { state ->
+                        IconButton(onClick = { 
+                            wordTextToEdit = state.word.text
+                            showEditWordDialog = true 
+                        }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Word")
+                        }
                         IconButton(onClick = { viewModel.toggleFocus(!state.word.isFocusWord) }) {
                             Icon(
                                 imageVector = if (state.word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder,
                                 contentDescription = "Favorite",
                                 tint = if (state.word.isFocusWord) MaterialTheme.colorScheme.primary else LocalContentColor.current
                             )
+                        }
+                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -150,6 +164,60 @@ fun WordDetailScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        }
+
+        // Dialogs
+        if (showEditWordDialog) {
+            AlertDialog(
+                onDismissRequest = { showEditWordDialog = false },
+                title = { Text("Edit Word") },
+                text = {
+                    TextField(
+                        value = wordTextToEdit,
+                        onValueChange = { wordTextToEdit = it },
+                        label = { Text("Word") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        viewModel.updateWordText(wordTextToEdit)
+                        showEditWordDialog = false
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEditWordDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showDeleteConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = { Text("Delete Word?") },
+                text = { Text("This will permanently remove the word and all its recorded occurrences. This action cannot be undone.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteWord(onDeleted = onNavigateBack)
+                            showDeleteConfirmDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

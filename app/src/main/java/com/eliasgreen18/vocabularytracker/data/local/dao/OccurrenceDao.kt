@@ -14,6 +14,9 @@ interface OccurrenceDao {
     @Query("SELECT COUNT(*) FROM occurrences WHERE wordId = :wordId")
     fun getOccurrenceCountForWord(wordId: Long): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM occurrences WHERE wordId = :wordId")
+    suspend fun getOccurrenceCountSync(wordId: Long): Int
+
     @Query("SELECT COUNT(*) FROM occurrences")
     fun getTotalOccurrencesCount(): Flow<Int>
 
@@ -127,4 +130,14 @@ interface OccurrenceDao {
 
     @Query("SELECT COUNT(DISTINCT wordId) FROM occurrences WHERE createdAt >= :timestamp")
     fun getUniqueWordsCountSince(timestamp: Long): Flow<Int>
+
+    @Query("""
+        DELETE FROM occurrences 
+        WHERE id = (
+            SELECT id FROM occurrences 
+            WHERE wordId = :wordId AND sessionId = :sessionId 
+            ORDER BY createdAt DESC LIMIT 1
+        )
+    """)
+    suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long)
 }

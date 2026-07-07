@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -30,7 +31,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
-import com.eliasgreen18.vocabularytracker.ui.util.ExternalTranslationHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -44,16 +44,21 @@ fun ActiveSessionScreen(
 ) {
     val sessionInfo by viewModel.sessionInfo.collectAsState()
     val sessionWords by viewModel.sessionWords.collectAsState()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     var showEditDialog by remember { mutableStateOf(false) }
     var wordText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    // Feedback state
-    var lastAddedWord by remember { mutableStateOf<String?>(null) }
+    // Auto-scroll logic: pin to top instantly when list size increases
+    LaunchedEffect(sessionWords.size) {
+        if (sessionWords.isNotEmpty()) {
+            listState.scrollToItem(0)
+        }
+    }
+
+    // Word Editing Dialog state
+    var wordToEdit by remember { mutableStateOf<WordWithCount?>(null) }
 
     Scaffold(
         topBar = {
@@ -127,13 +132,8 @@ fun ActiveSessionScreen(
                             if (wordText.isNotBlank()) {
                                 val word = wordText.trim()
                                 viewModel.recordWord(word)
-                                lastAddedWord = word
                                 wordText = ""
                                 focusRequester.requestFocus()
-                                scope.launch {
-                                    delay(1200.milliseconds)
-                                    if (lastAddedWord == word) lastAddedWord = null
-                                }
                             }
                         }
                     ),
@@ -143,13 +143,8 @@ fun ActiveSessionScreen(
                                 if (wordText.isNotBlank()) {
                                     val word = wordText.trim()
                                     viewModel.recordWord(word)
-                                    lastAddedWord = word
                                     wordText = ""
                                     focusRequester.requestFocus()
-                                    scope.launch {
-                                        delay(1200.milliseconds)
-                                        if (lastAddedWord == word) lastAddedWord = null
-                                    }
                                 }
                             },
                             enabled = wordText.isNotBlank()
@@ -159,21 +154,6 @@ fun ActiveSessionScreen(
                     },
                     shape = MaterialTheme.shapes.extraLarge
                 )
-                
-                // Subtle Feedback Overlay
-                AnimatedVisibility(
-                    visible = lastAddedWord != null,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Text(
-                        text = "✓ $lastAddedWord",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -188,7 +168,11 @@ fun ActiveSessionScreen(
                     FocusWordItem(
                         word = wordWithCount,
                         onToggleFocus = { isFocus -> viewModel.toggleFocus(wordWithCount.wordId, isFocus) },
-                        onTranslateExternal = { ExternalTranslationHelper.openGoogleTranslate(context, wordWithCount.wordText) },
+                        onDeleteFromSession = { viewModel.deleteFromSession(wordWithCount.wordId) },
+                        onEditWord = { wordToEdit = wordWithCount },
+                        onPlusClick = { 
+                            viewModel.recordWord(wordWithCount.wordText)
+                        },
                         onClick = { onNavigateToWordDetail(wordWithCount.wordId) }
                     )
                 }
@@ -208,6 +192,17 @@ fun ActiveSessionScreen(
                 )
             }
         }
+
+        wordToEdit?.let { word ->
+            EditWordDialog(
+                initialText = word.wordText,
+                onDismiss = { wordToEdit = null },
+                onConfirm = { newText ->
+                    viewModel.renameWord(word.wordId, newText)
+                    wordToEdit = null
+                }
+            )
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -219,52 +214,96 @@ fun ActiveSessionScreen(
 fun FocusWordItem(
     word: WordWithCount, 
     onToggleFocus: (Boolean) -> Unit, 
-    onTranslateExternal: () -> Unit,
+    onDeleteFromSession: () -> Unit,
+    onEditWord: () -> Unit,
+    onPlusClick: () -> Unit,
     onClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = word.wordText, 
+                style = MaterialTheme.typography.bodyLarge, 
+                fontWeight = FontWeight.Bold
+            )
+        },
+        supportingContent = {
+            if (word.translation != null && word.translationStatus == TranslationStatus.DONE) {
                 Text(
-                    text = word.wordText, 
-                    style = MaterialTheme.typography.bodyLarge, 
-                    fontWeight = FontWeight.Medium
+                    text = word.translation!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
-                if (word.translation != null && word.translationStatus == TranslationStatus.DONE) {
-                    Text(
-                        text = " → ${word.translation}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                    )
-                }
             }
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Compact Metrics - REORDERED: Session first (Primary), then Global
+                // Compact Metrics
                 MetricChip(value = word.sessionCount, isPrimary = true)
                 Spacer(modifier = Modifier.width(4.dp))
                 MetricChip(value = word.globalCount, isPrimary = false)
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                // Grouped Actions
-                IconButton(onClick = onTranslateExternal, modifier = Modifier.size(32.dp)) {
+                // Growth Action: Plus
+                IconButton(onClick = onPlusClick, modifier = Modifier.size(32.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = "Translate",
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Hit",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = { onToggleFocus(!word.isFocusWord) }, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = if (word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = "Focus",
-                        tint = if (word.isFocusWord) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
+
+                // Maintenance Hub: Overflow Menu
+                Box {
+                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.MoreVert, 
+                            contentDescription = "More", 
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit word text") },
+                            onClick = { 
+                                showMenu = false
+                                onEditWord() 
+                            },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (word.isFocusWord) "Remove from Focus" else "Add to Focus") },
+                            onClick = { 
+                                showMenu = false
+                                onToggleFocus(!word.isFocusWord) 
+                            },
+                            leadingIcon = { 
+                                Icon(
+                                    if (word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder, 
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                ) 
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Remove from this session", color = MaterialTheme.colorScheme.error) },
+                            onClick = { 
+                                showMenu = false
+                                onDeleteFromSession() 
+                            },
+                            leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
                 }
             }
         }
@@ -283,11 +322,42 @@ fun MetricChip(value: Int, isPrimary: Boolean) {
             Text(
                 text = value.toString(),
                 style = MaterialTheme.typography.labelSmall,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isPrimary) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
+}
+
+@Composable
+fun EditWordDialog(
+    initialText: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var text by remember { mutableStateOf(initialText) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Word") },
+        text = {
+            TextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Word text") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) {
+                Text("Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

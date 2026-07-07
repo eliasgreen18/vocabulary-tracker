@@ -1,5 +1,6 @@
 package com.eliasgreen18.vocabularytracker.domain.usecase
 
+import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
 import com.eliasgreen18.vocabularytracker.domain.model.Word
 import com.eliasgreen18.vocabularytracker.domain.repository.WordRepository
 import javax.inject.Inject
@@ -7,7 +8,8 @@ import javax.inject.Inject
 class RegisterWordUseCase @Inject constructor(
     private val repository: WordRepository,
     private val findWordUseCase: FindWordUseCase,
-    private val recordOccurrenceUseCase: RecordOccurrenceUseCase
+    private val recordOccurrenceUseCase: RecordOccurrenceUseCase,
+    private val requestTranslationUseCase: RequestTranslationUseCase
 ) {
     suspend operator fun invoke(sessionId: Long, text: String) {
         val normalizedText = text.trim().lowercase()
@@ -23,18 +25,20 @@ class RegisterWordUseCase @Inject constructor(
             word.id
         }
 
+        // 1. Record the occurrence FIRST
         recordOccurrenceUseCase(wordId, sessionId)
         
-        // Auto-translation disabled for stabilization
-        /*
-        word?.let { w ->
-            if (w.translationStatus == TranslationStatus.NOT_REQUESTED) {
-                val totalCount = repository.getOccurrenceCountForWord(wordId).first()
-                if (totalCount >= 3) {
-                    requestTranslationUseCase(w)
-                }
+        // 2. Refresh word state to get the LATEST metadata (including updated translation status if changed elsewhere)
+        val updatedWord = repository.getWordById(wordId) ?: return
+
+        // 3. Trigger translation if not done/loading and count reached threshold
+        if (updatedWord.translationStatus != TranslationStatus.DONE && updatedWord.translationStatus != TranslationStatus.LOADING) {
+            // Fetch the truly UPDATED count synchronously
+            val totalCount = repository.getOccurrenceCountSync(wordId)
+            
+            if (totalCount >= 3) {
+                requestTranslationUseCase(updatedWord)
             }
         }
-        */
     }
 }

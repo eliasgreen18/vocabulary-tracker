@@ -93,7 +93,15 @@ fun ReviewScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
-                    Spacer(modifier = Modifier.height(64.dp))
+                    Spacer(modifier = Modifier.height(48.dp))
+                    
+                    Text(
+                        text = "Do you remember this word?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -109,7 +117,7 @@ fun ReviewScreen(
                         ) {
                             Icon(Icons.Default.Close, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Forgot")
+                            Text("No")
                         }
                         
                         Button(
@@ -122,7 +130,7 @@ fun ReviewScreen(
                         ) {
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Remembered")
+                            Text("Yes")
                         }
                     }
                 }

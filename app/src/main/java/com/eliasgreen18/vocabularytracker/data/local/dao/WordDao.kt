@@ -22,6 +22,12 @@ interface WordDao {
     @Query("UPDATE words SET isFocusWord = :isFocus WHERE id = :wordId")
     suspend fun updateFocusStatus(wordId: Long, isFocus: Boolean)
 
+    @Query("UPDATE words SET text = :newText WHERE id = :wordId")
+    suspend fun updateWordText(wordId: Long, newText: String)
+
+    @Query("DELETE FROM words WHERE id = :wordId")
+    suspend fun deleteWord(wordId: Long)
+
     @Query("""
         SELECT 
             w.id as wordId,

@@ -29,11 +29,7 @@ class RequestTranslationUseCase @Inject constructor(
                     "text" to word.text
                 )
             )
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
+            // Removed Network Constraint for Local Dictionary speed & offline use
             .setBackoffCriteria(
                 BackoffPolicy.EXPONENTIAL,
                 WorkRequest.MIN_BACKOFF_MILLIS,
