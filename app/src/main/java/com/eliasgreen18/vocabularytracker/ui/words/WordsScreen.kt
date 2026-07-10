@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -17,11 +16,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
+import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WordsScreen(
     onNavigateToWordDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onBackupClick: () -> Unit,
     viewModel: WordsViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -30,7 +33,12 @@ fun WordsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("My Vocabulary") })
+            MainTopBar(
+                title = "My Vocabulary",
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToNotifications = onNavigateToNotifications,
+                onBackupClick = onBackupClick
+            )
         }
     ) { innerPadding ->
         Column(
@@ -43,7 +51,7 @@ fun WordsScreen(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 label = { Text("Search words") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true
             )
@@ -74,7 +82,8 @@ fun WordsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             LazyColumn(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 items(searchResults) { wordWithCount ->
                     WordItem(

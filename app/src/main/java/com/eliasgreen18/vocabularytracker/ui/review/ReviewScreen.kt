@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,6 +24,9 @@ import kotlinx.coroutines.delay
 fun ReviewScreen(
     onNavigateBack: () -> Unit,
     onNavigateToWordDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onBackupClick: () -> Unit,
     viewModel: ReviewViewModel = hiltViewModel()
 ) {
     val currentWord by viewModel.currentWord.collectAsState()
@@ -42,13 +46,11 @@ fun ReviewScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Daily Review") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            MainTopBar(
+                title = "Daily Review",
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToNotifications = onNavigateToNotifications,
+                onBackupClick = onBackupClick
             )
         }
     ) { innerPadding ->
@@ -159,7 +161,7 @@ fun ReviewScreen(
                 visible = showFeedback,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 120.dp)
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp)
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,

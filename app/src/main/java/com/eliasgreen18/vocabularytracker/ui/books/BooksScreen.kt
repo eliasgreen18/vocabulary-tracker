@@ -13,11 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BooksScreen(
     onNavigateToBookDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onBackupClick: () -> Unit,
     viewModel: BookViewModel = hiltViewModel()
 ) {
     val books by viewModel.booksState.collectAsState()
@@ -25,46 +29,52 @@ fun BooksScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("My Library") })
+            MainTopBar(
+                title = "Library",
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToNotifications = onNavigateToNotifications,
+                onBackupClick = onBackupClick
+            )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddBookDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddBookDialog = true }
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Book")
             }
         }
     ) { innerPadding ->
-        if (books.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = androidx.compose.ui.Alignment.Center
-            ) {
-                Text("Your library is empty. Add your first book!")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                items(books) { book ->
-                    BookItem(
-                        book = book,
-                        onClick = { onNavigateToBookDetail(book.id) }
-                    )
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            if (books.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = androidx.compose.ui.Alignment.Center
+                ) {
+                    Text("Your library is empty. Add your first book!")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(books) { book ->
+                        BookItem(
+                            book = book,
+                            onClick = { onNavigateToBookDetail(book.id) }
+                        )
+                    }
                 }
             }
-        }
 
-        if (showAddBookDialog) {
-            AddBookDialog(
-                onDismiss = { showAddBookDialog = false },
-                onConfirm = { title, author, language ->
-                    viewModel.addBook(title, author, language)
-                    showAddBookDialog = false
-                }
-            )
+            if (showAddBookDialog) {
+                AddBookDialog(
+                    onDismiss = { showAddBookDialog = false },
+                    onConfirm = { title, author, language ->
+                        viewModel.addBook(title, author, language)
+                        showAddBookDialog = false
+                    }
+                )
+            }
         }
     }
 }

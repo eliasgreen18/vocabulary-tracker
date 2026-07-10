@@ -44,15 +44,16 @@ fun ActiveSessionScreen(
 ) {
     val sessionInfo by viewModel.sessionInfo.collectAsState()
     val sessionWords by viewModel.sessionWords.collectAsState()
+    val autoScrollEnabled by viewModel.autoScrollEnabled.collectAsState()
     val listState = rememberLazyListState()
 
     var showEditDialog by remember { mutableStateOf(false) }
     var wordText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    // Auto-scroll logic: pin to top instantly when list size increases
+    // Auto-scroll logic: pin to top instantly if enabled
     LaunchedEffect(sessionWords.size) {
-        if (sessionWords.isNotEmpty()) {
+        if (sessionWords.isNotEmpty() && autoScrollEnabled) {
             listState.scrollToItem(0)
         }
     }
@@ -81,7 +82,7 @@ fun ActiveSessionScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
-                                        text = info.chapter.number.toString(),
+                                        text = info.chapter.number,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
                                     )

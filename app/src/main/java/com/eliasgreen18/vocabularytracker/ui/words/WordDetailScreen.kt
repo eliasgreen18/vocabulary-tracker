@@ -1,7 +1,9 @@
 package com.eliasgreen18.vocabularytracker.ui.words
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -224,8 +226,9 @@ fun WordDetailScreen(
         if (showEditIpaDialog) {
             EditValueDialog(
                 title = "Edit Pronunciation",
-                label = "IPA (e.g. /brɪsk/)",
+                label = "IPA",
                 initialValue = ipaToEdit,
+                isIpa = true,
                 onDismiss = { showEditIpaDialog = false },
                 onConfirm = {
                     viewModel.saveManualIpa(it)
@@ -305,21 +308,44 @@ fun EditValueDialog(
     title: String,
     label: String,
     initialValue: String,
+    isIpa: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     var value by remember { mutableStateOf(initialValue) }
+    
+    val ipaSymbols = listOf("/", "ə", "ɪ", "æ", "θ", "ð", "ʃ", "ʒ", "ŋ", "ʌ", "ɔ", "ɒ", "ɜ", "ʊ", "u", "i", "e", "a")
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            TextField(
-                value = value,
-                onValueChange = { value = it },
-                label = { Text(label) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            Column {
+                TextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text(label) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                if (isIpa) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = "Quick Symbols", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(ipaSymbols) { symbol ->
+                            AssistChip(
+                                onClick = { value += symbol },
+                                label = { Text(symbol, style = MaterialTheme.typography.bodyLarge) }
+                            )
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
             Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) {

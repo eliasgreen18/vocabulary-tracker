@@ -156,11 +156,13 @@ object DatabaseModule {
                 SELECT id, bookId, CAST(number AS TEXT), title FROM chapters
                 """.trimIndent()
             )
-            // Re-create the unique index
-            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_chapters_bookId_number` ON `chapters_new` (`bookId`, `number`)")
+            
             // Swap tables
             db.execSQL("DROP TABLE chapters")
             db.execSQL("ALTER TABLE chapters_new RENAME TO chapters")
+
+            // Re-create the unique index ON THE FINAL TABLE NAME
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_chapters_bookId_number` ON `chapters` (`bookId`, `number`)")
         }
     }
 

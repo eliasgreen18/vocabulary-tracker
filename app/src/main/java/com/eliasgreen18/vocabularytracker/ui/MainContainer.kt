@@ -1,15 +1,20 @@
 package com.eliasgreen18.vocabularytracker.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import android.content.Intent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -28,6 +33,8 @@ import com.eliasgreen18.vocabularytracker.ui.session.ChapterDetailScreen
 import com.eliasgreen18.vocabularytracker.ui.stats.StatsScreen
 import com.eliasgreen18.vocabularytracker.ui.words.WordsScreen
 import com.eliasgreen18.vocabularytracker.ui.words.WordDetailScreen
+import com.eliasgreen18.vocabularytracker.ui.settings.SettingsScreen
+import com.eliasgreen18.vocabularytracker.ui.notifications.NotificationCenterScreen
 
 sealed class NavItem {
     data class ScreenItem(val screen: Screen, val label: String, val icon: ImageVector) : NavItem()
@@ -41,9 +48,29 @@ fun MainContainer(
 ) {
     val navController = rememberNavController()
     val activeSessionId by viewModel.activeSessionId.collectAsState()
+    val backupFile by viewModel.backupFile.collectAsState()
+    val context = LocalContext.current
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    // Global Backup Handler
+    LaunchedEffect(backupFile) {
+        backupFile?.let { file ->
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/octet-stream"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Save Backup To..."))
+            viewModel.clearBackupState()
+        }
+    }
 
     val items = listOf(
         NavItem.ScreenItem(Screen.Search, "Words", Icons.Default.Translate),
@@ -54,6 +81,7 @@ fun MainContainer(
     )
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->
@@ -90,13 +118,10 @@ fun MainContainer(
                             when (item) {
                                 is NavItem.ScreenItem -> {
                                     if (isSelected) {
-                                        // Reset the tab: navigate back to its own route
                                         navController.navigate(item.screen.route) {
                                             popUpTo(item.screen.route) { inclusive = true }
                                         }
                                     } else {
-                                        // Standard cross-tab navigation WITHOUT state restoration
-                                        // This ensures we always land on the root of the tab
                                         navController.navigate(item.screen.route) {
                                             popUpTo(navController.graph.findStartDestination().id) {
                                                 saveState = true
@@ -120,96 +145,128 @@ fun MainContainer(
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Search.route,
-            modifier = Modifier.padding(innerPadding)
+        // Use a Surface with a background color as the root of the content area
+        // to prevent superimposed ghosting during transitions across ALL screens.
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            color = MaterialTheme.colorScheme.background
         ) {
-            composable(Screen.Search.route) {
-                WordsScreen(
-                    onNavigateToWordDetail = { wordId ->
-                        navController.navigate(Screen.WordDetail.createRoute(wordId))
-                    }
-                )
-            }
-            composable(Screen.Books.route) {
-                BooksScreen(
-                    onNavigateToBookDetail = { bookId ->
-                        navController.navigate(Screen.BookDetail.createRoute(bookId))
-                    }
-                )
-            }
-            composable(Screen.Review.route) {
-                ReviewScreen(
-                    onNavigateBack = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Search.route,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None }
+            ) {
+                composable(Screen.Search.route) {
+                    WordsScreen(
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
+                        },
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
+                        onBackupClick = { viewModel.exportBackup() }
+                    )
+                }
+                composable(Screen.Books.route) {
+                    BooksScreen(
+                        onNavigateToBookDetail = { bookId ->
+                            navController.navigate(Screen.BookDetail.createRoute(bookId))
+                        },
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
+                        onBackupClick = { viewModel.exportBackup() }
+                    )
+                }
+                composable(Screen.Review.route) {
+                    ReviewScreen(
+                        onNavigateBack = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        },
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
+                        },
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
+                        onBackupClick = { viewModel.exportBackup() }
+                    )
+                }
+                composable(Screen.Home.route) {
+                    StatsScreen(
+                        onNavigateToReview = {
+                            navController.navigate(Screen.Review.route)
+                        },
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
+                        onBackupClick = { viewModel.exportBackup() }
+                    )
+                }
+
+                composable(Screen.Settings.route) {
+                    SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                }
+                
+                composable(Screen.NotificationCenter.route) {
+                    NotificationCenterScreen(onNavigateBack = { navController.popBackStack() })
+                }
+                
+                // Details & Flows
+                composable(
+                    route = Screen.BookDetail.route,
+                    arguments = listOf(navArgument("bookId") { type = NavType.LongType })
+                ) {
+                    BookDetailScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToSession = { sessionId ->
+                            navController.navigate(Screen.ActiveSession.createRoute(sessionId))
+                        },
+                        onNavigateToChapterDetail = { chapterId ->
+                            navController.navigate(Screen.ChapterDetail.createRoute(chapterId))
+                        },
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
                         }
-                    },
-                    onNavigateToWordDetail = { wordId ->
-                        navController.navigate(Screen.WordDetail.createRoute(wordId))
-                    }
-                )
-            }
-            composable(Screen.Home.route) {
-                StatsScreen(
-                    onNavigateToReview = {
-                        navController.navigate(Screen.Review.route)
-                    }
-                )
-            }
-            
-            // Details & Flows
-            composable(
-                route = Screen.BookDetail.route,
-                arguments = listOf(navArgument("bookId") { type = NavType.LongType })
-            ) {
-                BookDetailScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToSession = { sessionId ->
-                        navController.navigate(Screen.ActiveSession.createRoute(sessionId))
-                    },
-                    onNavigateToChapterDetail = { chapterId ->
-                        navController.navigate(Screen.ChapterDetail.createRoute(chapterId))
-                    },
-                    onNavigateToWordDetail = { wordId ->
-                        navController.navigate(Screen.WordDetail.createRoute(wordId))
-                    }
-                )
-            }
-            composable(
-                route = Screen.ActiveSession.route,
-                arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
-            ) {
-                ActiveSessionScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToWordDetail = { wordId ->
-                        navController.navigate(Screen.WordDetail.createRoute(wordId))
-                    }
-                )
-            }
-            composable(
-                route = Screen.WordDetail.route,
-                arguments = listOf(navArgument("wordId") { type = NavType.LongType })
-            ) {
-                WordDetailScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(
-                route = Screen.ChapterDetail.route,
-                arguments = listOf(navArgument("chapterId") { type = NavType.LongType })
-            ) {
-                ChapterDetailScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToWordDetail = { wordId ->
-                        navController.navigate(Screen.WordDetail.createRoute(wordId))
-                    }
-                )
+                    )
+                }
+                composable(
+                    route = Screen.ActiveSession.route,
+                    arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+                ) {
+                    ActiveSessionScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
+                        }
+                    )
+                }
+                composable(
+                    route = Screen.WordDetail.route,
+                    arguments = listOf(navArgument("wordId") { type = NavType.LongType })
+                ) {
+                    WordDetailScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(
+                    route = Screen.ChapterDetail.route,
+                    arguments = listOf(navArgument("chapterId") { type = NavType.LongType })
+                ) {
+                    ChapterDetailScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
+                        }
+                    )
+                }
             }
         }
     }

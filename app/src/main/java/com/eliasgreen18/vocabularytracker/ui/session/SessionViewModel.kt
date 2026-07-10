@@ -7,6 +7,7 @@ import com.eliasgreen18.vocabularytracker.domain.model.ActiveSessionInfo
 import com.eliasgreen18.vocabularytracker.domain.model.SessionSummary
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
+import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -26,6 +27,7 @@ class SessionViewModel @Inject constructor(
     private val toggleFocusWordUseCase: ToggleFocusWordUseCase,
     private val deleteLatestSessionOccurrenceUseCase: DeleteLatestSessionOccurrenceUseCase,
     private val renameWordUseCase: RenameWordUseCase,
+    private val preferencesRepository: UserPreferencesRepository,
     getSessionOccurrencesUseCase: GetSessionOccurrencesUseCase
 ) : ViewModel() {
 
@@ -55,6 +57,13 @@ class SessionViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val autoScrollEnabled: StateFlow<Boolean> = preferencesRepository.isAutoScrollEnabled()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
 
     val highlightedWords: StateFlow<List<WordWithCount>> = _rawSessionWords.map { words ->
         getHighlightedWordsUseCase(words)
