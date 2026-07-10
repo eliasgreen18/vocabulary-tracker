@@ -79,7 +79,7 @@ class SessionViewModel @Inject constructor(
         _masteryFilter.value = filter
     }
 
-    fun updateChapterInfo(number: Int, title: String?) {
+    fun updateChapterInfo(number: String, title: String?) {
         viewModelScope.launch {
             sessionInfo.value?.chapter?.let { chapter ->
                 val updatedChapter = chapter.copy(

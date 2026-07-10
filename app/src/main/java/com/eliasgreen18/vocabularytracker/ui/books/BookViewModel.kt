@@ -60,7 +60,7 @@ class BookViewModel @Inject constructor(
         }
     }
 
-    fun onChapterNumberEntered(bookId: Long, number: Int, onExists: (Long) -> Unit, onNew: (Int) -> Unit) {
+    fun onChapterNumberEntered(bookId: Long, number: String, onExists: (Long) -> Unit, onNew: (String) -> Unit) {
         viewModelScope.launch {
             val existingChapter = getChapterByNumberUseCase(bookId, number)
             if (existingChapter != null) {
@@ -72,7 +72,7 @@ class BookViewModel @Inject constructor(
         }
     }
 
-    fun startSessionWithNewChapter(bookId: Long, number: Int, title: String?, onSessionStarted: (Long) -> Unit) {
+    fun startSessionWithNewChapter(bookId: Long, number: String, title: String?, onSessionStarted: (Long) -> Unit) {
         viewModelScope.launch {
             val chapterId = upsertChapterUseCase(
                 Chapter(bookId = bookId, number = number, title = title)

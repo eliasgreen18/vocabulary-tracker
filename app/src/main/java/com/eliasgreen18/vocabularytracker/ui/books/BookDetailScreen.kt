@@ -214,7 +214,7 @@ fun ChapterItem(chapter: Chapter, onStartSession: () -> Unit, onViewDetails: () 
 }
 
 @Composable
-fun AddChapterDialog(onDismiss: () -> Unit, onConfirm: (Int, String?) -> Unit) {
+fun AddChapterDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> Unit) {
     var number by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
 
@@ -225,8 +225,8 @@ fun AddChapterDialog(onDismiss: () -> Unit, onConfirm: (Int, String?) -> Unit) {
             Column {
                 TextField(
                     value = number,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) number = it },
-                    label = { Text("Chapter Number") },
+                    onValueChange = { number = it },
+                    label = { Text("Chapter/Section (e.g. Prologue, 1)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -240,7 +240,7 @@ fun AddChapterDialog(onDismiss: () -> Unit, onConfirm: (Int, String?) -> Unit) {
         },
         confirmButton = {
             Button(
-                onClick = { number.toIntOrNull()?.let { onConfirm(it, title.ifBlank { null }) } },
+                onClick = { onConfirm(number, title.ifBlank { null }) },
                 enabled = number.isNotBlank()
             ) {
                 Text("Start Reading")

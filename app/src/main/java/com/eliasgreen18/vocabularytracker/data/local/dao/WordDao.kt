@@ -70,6 +70,9 @@ interface WordDao {
     @Query("UPDATE words SET translation = :translation, translationStatus = :status WHERE id = :wordId")
     suspend fun updateTranslation(wordId: Long, translation: String?, status: String)
 
+    @Query("UPDATE words SET ipa = :ipa WHERE id = :wordId")
+    suspend fun updateIpa(wordId: Long, ipa: String?)
+
     @Query("SELECT * FROM words WHERE translationStatus IN ('PENDING', 'LOADING', 'ERROR')")
     fun getPendingTranslations(): Flow<List<WordEntity>>
 

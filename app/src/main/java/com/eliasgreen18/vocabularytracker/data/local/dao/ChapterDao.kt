@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ChapterDao {
     @Query("SELECT * FROM chapters WHERE bookId = :bookId AND number = :number LIMIT 1")
-    suspend fun getChapterByNumber(bookId: Long, number: Int): ChapterEntity?
+    suspend fun getChapterByNumber(bookId: Long, number: String): ChapterEntity?
 
     @Query("SELECT * FROM chapters WHERE bookId = :bookId ORDER BY number ASC")
     fun getChaptersForBook(bookId: Long): Flow<List<ChapterEntity>>

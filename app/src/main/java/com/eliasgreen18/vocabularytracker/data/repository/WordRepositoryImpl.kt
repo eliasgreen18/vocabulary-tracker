@@ -35,6 +35,10 @@ class WordRepositoryImpl @Inject constructor(
         wordDao.updateWordText(wordId, newText)
     }
 
+    override suspend fun updateIpa(wordId: Long, ipa: String?) {
+        wordDao.updateIpa(wordId, ipa)
+    }
+
     override suspend fun deleteWord(wordId: Long) {
         wordDao.deleteWord(wordId)
     }

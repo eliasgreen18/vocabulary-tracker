@@ -132,6 +132,38 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 1. Add IPA column to words
+            db.execSQL("ALTER TABLE words ADD COLUMN ipa TEXT")
+            
+            // 2. Refactor chapters table number column from Int to String
+            // Create a temporary table with the new schema
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `chapters_new` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                    `bookId` INTEGER NOT NULL, 
+                    `number` TEXT NOT NULL, 
+                    `title` TEXT
+                )
+                """.trimIndent()
+            )
+            // Copy data, casting number to String
+            db.execSQL(
+                """
+                INSERT INTO chapters_new (id, bookId, number, title)
+                SELECT id, bookId, CAST(number AS TEXT), title FROM chapters
+                """.trimIndent()
+            )
+            // Re-create the unique index
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_chapters_bookId_number` ON `chapters_new` (`bookId`, `number`)")
+            // Swap tables
+            db.execSQL("DROP TABLE chapters")
+            db.execSQL("ALTER TABLE chapters_new RENAME TO chapters")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocabularyDatabase {
@@ -140,7 +172,7 @@ object DatabaseModule {
             VocabularyDatabase::class.java,
             "vocabulary_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
         .fallbackToDestructiveMigration()
         .build()
     }

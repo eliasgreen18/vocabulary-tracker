@@ -12,7 +12,7 @@ import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 data class ChapterEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bookId: Long,
-    val number: Int,
+    val number: String, // Changed from Int to String
     val title: String?
 )
 

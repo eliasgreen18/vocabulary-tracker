@@ -12,6 +12,7 @@ interface WordRepository {
     fun getWordByIdFlow(id: Long): Flow<Word?>
     suspend fun insertWord(word: Word): Long
     suspend fun updateWordText(wordId: Long, newText: String)
+    suspend fun updateIpa(wordId: Long, ipa: String?)
     suspend fun deleteWord(wordId: Long)
     suspend fun insertOccurrence(occurrence: Occurrence): Long
     suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long)

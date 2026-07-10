@@ -45,8 +45,8 @@ class BookDetailViewModel @Inject constructor(
                 val sessionId = startReadingSessionUseCase(lastChapter.id)
                 onSessionReady(sessionId)
             } else {
-                // If no chapters, start with number 1
-                startNewChapter(1, null, onSessionReady)
+                // If no chapters, start with number "1"
+                startNewChapter("1", null, onSessionReady)
             }
         }
     }
@@ -58,7 +58,7 @@ class BookDetailViewModel @Inject constructor(
         }
     }
 
-    fun startNewChapter(number: Int, title: String?, onSessionReady: (Long) -> Unit) {
+    fun startNewChapter(number: String, title: String?, onSessionReady: (Long) -> Unit) {
         viewModelScope.launch {
             val existing = getChapterByNumberUseCase(bookId, number)
             val chapterId = existing?.id ?: upsertChapterUseCase(

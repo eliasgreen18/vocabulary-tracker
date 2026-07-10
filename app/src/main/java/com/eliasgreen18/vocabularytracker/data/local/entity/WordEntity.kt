@@ -20,7 +20,8 @@ data class WordEntity(
     val lastSrsReviewAt: Long? = null,
     val reviewCount: Int = 0,
     val successfulReviews: Int = 0,
-    val currentIntervalDays: Int = 0
+    val currentIntervalDays: Int = 0,
+    val ipa: String? = null // New column
 )
 
 fun WordEntity.toDomain() = Word(
@@ -35,7 +36,8 @@ fun WordEntity.toDomain() = Word(
     lastSrsReviewAt = lastSrsReviewAt?.let { Instant.ofEpochMilli(it) },
     reviewCount = reviewCount,
     successfulReviews = successfulReviews,
-    currentIntervalDays = currentIntervalDays
+    currentIntervalDays = currentIntervalDays,
+    ipa = ipa
 )
 
 fun Word.toEntity() = WordEntity(
@@ -50,5 +52,6 @@ fun Word.toEntity() = WordEntity(
     lastSrsReviewAt = lastSrsReviewAt?.toEpochMilli(),
     reviewCount = reviewCount,
     successfulReviews = successfulReviews,
-    currentIntervalDays = currentIntervalDays
+    currentIntervalDays = currentIntervalDays,
+    ipa = ipa
 )

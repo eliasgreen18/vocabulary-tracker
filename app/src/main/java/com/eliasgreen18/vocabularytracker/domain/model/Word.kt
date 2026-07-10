@@ -15,5 +15,6 @@ data class Word(
     val lastSrsReviewAt: Instant? = null,
     val reviewCount: Int = 0,
     val successfulReviews: Int = 0,
-    val currentIntervalDays: Int = 0
+    val currentIntervalDays: Int = 0,
+    val ipa: String? = null // New field
 )

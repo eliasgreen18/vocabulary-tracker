@@ -18,7 +18,7 @@ class WordDetailViewModel @Inject constructor(
     getWordDetailUseCase: GetWordDetailUseCase,
     private val toggleFocusWordUseCase: ToggleFocusWordUseCase,
     private val retryTranslationUseCase: RetryTranslationUseCase,
-    private val saveManualTranslationUseCase: SaveManualTranslationUseCase
+    private val updateWordMetadataUseCase: UpdateWordMetadataUseCase
 ) : ViewModel() {
 
     private val wordId: Long = checkNotNull(savedStateHandle["wordId"])
@@ -44,7 +44,13 @@ class WordDetailViewModel @Inject constructor(
 
     fun saveManualTranslation(translation: String) {
         viewModelScope.launch {
-            saveManualTranslationUseCase(wordId, translation)
+            updateWordMetadataUseCase.updateTranslation(wordId, translation)
+        }
+    }
+
+    fun saveManualIpa(ipa: String) {
+        viewModelScope.launch {
+            updateWordMetadataUseCase.updateIpa(wordId, ipa)
         }
     }
 

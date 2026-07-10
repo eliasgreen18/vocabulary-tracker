@@ -363,12 +363,12 @@ fun EditWordDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditChapterDialog(
-    initialNumber: Int,
+    initialNumber: String,
     initialTitle: String,
     onDismiss: () -> Unit,
-    onConfirm: (Int, String?) -> Unit
+    onConfirm: (String, String?) -> Unit
 ) {
-    var chapterNumber by remember { mutableStateOf(initialNumber.toString()) }
+    var chapterNumber by remember { mutableStateOf(initialNumber) }
     var chapterTitle by remember { mutableStateOf(initialTitle) }
 
     AlertDialog(
@@ -378,10 +378,9 @@ fun EditChapterDialog(
             Column {
                 TextField(
                     value = chapterNumber,
-                    onValueChange = { if (it.all { char -> char.isDigit() }) chapterNumber = it },
-                    label = { Text("Chapter Number *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    onValueChange = { chapterNumber = it },
+                    label = { Text("Chapter/Section *") },
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 TextField(
@@ -395,9 +394,7 @@ fun EditChapterDialog(
         confirmButton = {
             Button(
                 onClick = { 
-                    chapterNumber.toIntOrNull()?.let { 
-                        onConfirm(it, chapterTitle.ifBlank { null }) 
-                    }
+                    onConfirm(chapterNumber, chapterTitle.ifBlank { null })
                 },
                 enabled = chapterNumber.isNotBlank()
             ) {

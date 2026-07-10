@@ -1,6 +1,5 @@
 package com.eliasgreen18.vocabularytracker.ui.words
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,7 +39,12 @@ fun WordDetailScreen(
     
     var showEditWordDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showEditTranslationDialog by remember { mutableStateOf(false) }
+    var showEditIpaDialog by remember { mutableStateOf(false) }
+    
     var wordTextToEdit by remember { mutableStateOf("") }
+    var translationToEdit by remember { mutableStateOf("") }
+    var ipaToEdit by remember { mutableStateOf("") }
 
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
         .withZone(ZoneId.systemDefault())
@@ -125,9 +129,31 @@ fun WordDetailScreen(
                     MemoryPerformanceCard(state)
                 }
 
-                // Translation Placeholder
+                // Translation Card (Editable)
                 item {
-                    TranslationCard(state)
+                    EditableDataCard(
+                        label = "Translation",
+                        value = state.word.translation,
+                        placeholder = "No translation available",
+                        onEdit = { 
+                            translationToEdit = state.word.translation ?: ""
+                            showEditTranslationDialog = true 
+                        }
+                    )
+                }
+
+                // IPA Card (Editable)
+                item {
+                    EditableDataCard(
+                        label = "Pronunciation (IPA)",
+                        value = state.word.ipa,
+                        placeholder = "No IPA available",
+                        onEdit = {
+                            ipaToEdit = state.word.ipa ?: ""
+                            showEditIpaDialog = true
+                        },
+                        icon = Icons.AutoMirrored.Filled.VolumeUp
+                    )
                 }
 
                 // Timeline Section
@@ -142,7 +168,9 @@ fun WordDetailScreen(
 
                 // Future Placeholders
                 item {
-                    FuturePlaceholdersSection()
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        PlaceholderSection(title = "Notes & Examples", icon = Icons.AutoMirrored.Filled.NoteAdd)
+                    }
                 }
 
                 // History Feed
@@ -168,30 +196,40 @@ fun WordDetailScreen(
 
         // Dialogs
         if (showEditWordDialog) {
-            AlertDialog(
-                onDismissRequest = { showEditWordDialog = false },
-                title = { Text("Edit Word") },
-                text = {
-                    TextField(
-                        value = wordTextToEdit,
-                        onValueChange = { wordTextToEdit = it },
-                        label = { Text("Word") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        viewModel.updateWordText(wordTextToEdit)
-                        showEditWordDialog = false
-                    }) {
-                        Text("Save")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showEditWordDialog = false }) {
-                        Text("Cancel")
-                    }
+            EditValueDialog(
+                title = "Edit Word",
+                label = "Word text",
+                initialValue = wordTextToEdit,
+                onDismiss = { showEditWordDialog = false },
+                onConfirm = { 
+                    viewModel.updateWordText(it)
+                    showEditWordDialog = false
+                }
+            )
+        }
+
+        if (showEditTranslationDialog) {
+            EditValueDialog(
+                title = "Edit Translation",
+                label = "Spanish translation",
+                initialValue = translationToEdit,
+                onDismiss = { showEditTranslationDialog = false },
+                onConfirm = {
+                    viewModel.saveManualTranslation(it)
+                    showEditTranslationDialog = false
+                }
+            )
+        }
+
+        if (showEditIpaDialog) {
+            EditValueDialog(
+                title = "Edit Pronunciation",
+                label = "IPA (e.g. /brɪsk/)",
+                initialValue = ipaToEdit,
+                onDismiss = { showEditIpaDialog = false },
+                onConfirm = {
+                    viewModel.saveManualIpa(it)
+                    showEditIpaDialog = false
                 }
             )
         }
@@ -220,6 +258,78 @@ fun WordDetailScreen(
             )
         }
     }
+}
+
+@Composable
+fun EditableDataCard(
+    label: String,
+    value: String?,
+    placeholder: String,
+    onEdit: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (icon != null) {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outline)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                }
+                IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value ?: placeholder,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (value != null) FontWeight.Bold else FontWeight.Normal,
+                fontStyle = if (value == null) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal
+            )
+        }
+    }
+}
+
+@Composable
+fun EditValueDialog(
+    title: String,
+    label: String,
+    initialValue: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var value by remember { mutableStateOf(initialValue) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            TextField(
+                value = value,
+                onValueChange = { value = it },
+                label = { Text(label) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -282,25 +392,6 @@ fun MemoryPerformanceCard(state: WordDetailUiState) {
 }
 
 @Composable
-fun TranslationCard(state: WordDetailUiState) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "Translation", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = state.word.translation ?: "No translation available",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (state.word.translation != null) FontWeight.Bold else FontWeight.Normal,
-                fontStyle = if (state.word.translation == null) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal
-            )
-        }
-    }
-}
-
-@Composable
 fun TimelineCard(state: WordDetailUiState, formatter: DateTimeFormatter) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -356,14 +447,6 @@ fun ExternalResourcesSection(text: String, context: android.content.Context) {
                 Text("Reverso", style = MaterialTheme.typography.labelLarge)
             }
         }
-    }
-}
-
-@Composable
-fun FuturePlaceholdersSection() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        PlaceholderSection(title = "Pronunciation (IPA)", icon = Icons.AutoMirrored.Filled.VolumeUp)
-        PlaceholderSection(title = "Notes & Examples", icon = Icons.AutoMirrored.Filled.NoteAdd)
     }
 }
 

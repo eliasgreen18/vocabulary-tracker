@@ -7,7 +7,7 @@ import javax.inject.Inject
 class GetChapterByNumberUseCase @Inject constructor(
     private val repository: ChapterRepository
 ) {
-    suspend operator fun invoke(bookId: Long, number: Int): Chapter? {
+    suspend operator fun invoke(bookId: Long, number: String): Chapter? {
         return repository.getChapterByNumber(bookId, number)
     }
 }

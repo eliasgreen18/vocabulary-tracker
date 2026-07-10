@@ -13,7 +13,7 @@ class ChapterRepositoryImpl @Inject constructor(
     private val chapterDao: ChapterDao
 ) : ChapterRepository {
 
-    override suspend fun getChapterByNumber(bookId: Long, number: Int): Chapter? {
+    override suspend fun getChapterByNumber(bookId: Long, number: String): Chapter? {
         return chapterDao.getChapterByNumber(bookId, number)?.toDomain()
     }
 
