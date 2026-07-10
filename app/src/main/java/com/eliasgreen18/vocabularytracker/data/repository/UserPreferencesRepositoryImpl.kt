@@ -7,7 +7,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +24,9 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private const val KEY_NOTIFICATION_HOUR = "notification_hour"
         private const val KEY_NOTIFICATION_MINUTE = "notification_minute"
         private const val KEY_AUTO_SCROLL_ENABLED = "auto_scroll_enabled"
+        private const val KEY_GEMINI_API_KEY = "gemini_api_key"
+        private const val KEY_GOOGLE_ACCOUNT_NAME = "google_account_name"
+        private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
     }
 
     private fun <T> preferenceFlow(key: String, defaultValue: T): Flow<T> = callbackFlow {
@@ -64,10 +66,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     }
 
     override fun getNotificationTime(): Flow<Pair<Int, Int>> {
-        val hourFlow = preferenceFlow(KEY_NOTIFICATION_HOUR, 9)
-        val minuteFlow = preferenceFlow(KEY_NOTIFICATION_MINUTE, 0)
-        
-        // Combining them manually for simplicity in this implementation
         return callbackFlow {
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
                 if (key == KEY_NOTIFICATION_HOUR || key == KEY_NOTIFICATION_MINUTE) {
@@ -91,5 +89,41 @@ class UserPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun setAutoScrollEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_SCROLL_ENABLED, enabled).apply()
+    }
+
+    override fun getGeminiApiKey(): Flow<String?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == KEY_GEMINI_API_KEY) {
+                trySend(p.getString(key, null))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(prefs.getString(KEY_GEMINI_API_KEY, null))
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override suspend fun setGeminiApiKey(key: String?) {
+        prefs.edit().putString(KEY_GEMINI_API_KEY, key).apply()
+    }
+
+    override fun getGoogleAccountName(): Flow<String?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == KEY_GOOGLE_ACCOUNT_NAME) {
+                trySend(p.getString(key, null))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(prefs.getString(KEY_GOOGLE_ACCOUNT_NAME, null))
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override suspend fun setGoogleAccountName(name: String?) {
+        prefs.edit().putString(KEY_GOOGLE_ACCOUNT_NAME, name).apply()
+    }
+
+    override fun isAutoSyncEnabled(): Flow<Boolean> = preferenceFlow(KEY_AUTO_SYNC_ENABLED, false)
+
+    override suspend fun setAutoSyncEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_SYNC_ENABLED, enabled).apply()
     }
 }

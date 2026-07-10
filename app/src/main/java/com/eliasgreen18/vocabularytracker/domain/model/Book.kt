@@ -7,5 +7,6 @@ data class Book(
     val title: String,
     val author: String,
     val language: String,
+    val genre: String? = null, // New field
     val lastOpenedAt: Instant? = null
 )

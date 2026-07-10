@@ -20,4 +20,6 @@ sealed class Screen(val route: String) {
     }
     object NotificationCenter : Screen("notifications")
     object Settings : Screen("settings")
+    object GlobalTimeline : Screen("global_timeline")
+    object ReadingProfile : Screen("reading_profile")
 }

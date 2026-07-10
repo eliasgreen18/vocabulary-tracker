@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.google.auth.library.oauth2.http)
     implementation(libs.google.play.services.auth)
     implementation(libs.google.http.client.android)
+    implementation(libs.google.generative.ai)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

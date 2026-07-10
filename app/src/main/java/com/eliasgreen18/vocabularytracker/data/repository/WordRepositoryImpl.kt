@@ -1,7 +1,9 @@
 package com.eliasgreen18.vocabularytracker.data.repository
 
 import com.eliasgreen18.vocabularytracker.data.local.dao.OccurrenceDao
+import com.eliasgreen18.vocabularytracker.data.local.dao.RelationshipDao
 import com.eliasgreen18.vocabularytracker.data.local.dao.WordDao
+import com.eliasgreen18.vocabularytracker.data.local.entity.WordRelationshipEntity
 import com.eliasgreen18.vocabularytracker.data.local.entity.toDomain
 import com.eliasgreen18.vocabularytracker.data.local.entity.toEntity
 import com.eliasgreen18.vocabularytracker.domain.model.*
@@ -12,7 +14,8 @@ import javax.inject.Inject
 
 class WordRepositoryImpl @Inject constructor(
     private val wordDao: WordDao,
-    private val occurrenceDao: OccurrenceDao
+    private val occurrenceDao: OccurrenceDao,
+    private val relationshipDao: RelationshipDao
 ) : WordRepository {
 
     override suspend fun getWordByText(text: String): Word? {
@@ -37,6 +40,14 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun updateIpa(wordId: Long, ipa: String?) {
         wordDao.updateIpa(wordId, ipa)
+    }
+
+    override suspend fun updateNotes(wordId: Long, notes: String?) {
+        wordDao.updateNotes(wordId, notes)
+    }
+
+    override suspend fun updateAiInsights(wordId: Long, explanation: String?, examples: String?) {
+        wordDao.updateAiInsights(wordId, explanation, examples)
     }
 
     override suspend fun deleteWord(wordId: Long) {
@@ -100,7 +111,8 @@ class WordRepositoryImpl @Inject constructor(
                     bookLanguage = it.bookLanguage,
                     chapterNumber = it.chapterNumber,
                     chapterTitle = it.chapterTitle,
-                    sessionId = it.sessionId
+                    sessionId = it.sessionId,
+                    snippet = it.snippet
                 )
             }
         }
@@ -108,6 +120,22 @@ class WordRepositoryImpl @Inject constructor(
 
     override fun searchWords(query: String): Flow<List<WordWithCount>> {
         return wordDao.searchWordsWithCount(query).map { entities ->
+            entities.map { 
+                WordWithCount(
+                    wordId = it.wordId,
+                    wordText = it.wordText,
+                    sessionCount = 0,
+                    globalCount = it.globalCount,
+                    isFocusWord = it.isFocusWord,
+                    translation = it.translation,
+                    translationStatus = TranslationStatus.valueOf(it.translationStatus)
+                )
+            }
+        }
+    }
+
+    override fun getAllWordsWithCount(): Flow<List<WordWithCount>> {
+        return wordDao.getAllWordsWithCount().map { entities ->
             entities.map { 
                 WordWithCount(
                     wordId = it.wordId,
@@ -171,6 +199,10 @@ class WordRepositoryImpl @Inject constructor(
                     lastReviewedAt = it.lastReviewedAt,
                     reviewPriority = it.reviewPriority,
                     lastContext = formatContext(it.lastBookTitle, it.lastChapterNumber, it.lastChapterTitle),
+                    lastSnippet = it.snippet,
+                    translation = it.translation,
+                    ipa = it.ipa,
+                    notes = it.notes,
                     currentIntervalDays = it.currentIntervalDays,
                     nextReviewAt = it.nextReviewAt
                 )
@@ -272,12 +304,108 @@ class WordRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun formatContext(book: String?, chapterNum: Int?, chapterTitle: String?): String {
+    override fun getBookContributions(): Flow<List<BookContribution>> {
+        return occurrenceDao.getBookContributions().map { entities ->
+            entities.map { 
+                BookContribution(
+                    bookId = it.bookId,
+                    bookTitle = it.bookTitle,
+                    uniqueWordsCount = it.uniqueWordsCount,
+                    totalOccurrencesCount = it.totalOccurrencesCount
+                )
+            }
+        }
+    }
+
+    override fun getChapterDifficulties(): Flow<List<ChapterDifficulty>> {
+        return occurrenceDao.getChapterDifficulties().map { entities ->
+            entities.map { 
+                ChapterDifficulty(
+                    chapterId = it.chapterId,
+                    bookTitle = it.bookTitle,
+                    chapterNumber = it.chapterNumber,
+                    uniqueWordsCount = it.uniqueWordsCount,
+                    totalOccurrencesCount = it.totalOccurrencesCount
+                )
+            }
+        }
+    }
+
+    override fun getDailyActivity(): Flow<Map<java.time.LocalDate, Int>> {
+        return occurrenceDao.getDailyActivity().map { entities ->
+            entities.associate { 
+                java.time.LocalDate.parse(it.date) to it.count
+            }
+        }
+    }
+
+    override fun getWordsByHitsRangeCount(min: Int, max: Int): Flow<Int> {
+        return wordDao.getWordsByHitsRangeCount(min, max)
+    }
+
+    override fun getWordsAboveHitsCount(min: Int): Flow<Int> {
+        return wordDao.getWordsAboveHitsCount(min)
+    }
+
+    override fun getForgottenWordsCount(): Flow<Int> {
+        return wordDao.getForgottenWordsCount()
+    }
+
+    override fun getAuthorStats(): Flow<List<AuthorStats>> {
+        return wordDao.getAuthorVocabularyStats().map { entities ->
+            entities.map { 
+                AuthorStats(
+                    author = it.author,
+                    uniqueWordsCount = it.uniqueWordsCount,
+                    totalOccurrencesCount = it.totalOccurrencesCount
+                )
+            }
+        }
+    }
+
+    override fun getWordDiscoveries(): Flow<List<WordDiscovery>> {
+        return occurrenceDao.getFirstEncounters().map { entities ->
+            entities.map { 
+                WordDiscovery(
+                    wordText = it.wordText,
+                    firstSeenAt = java.time.Instant.ofEpochMilli(it.firstSeenAt)
+                )
+            }
+        }
+    }
+
+    override suspend fun addRelationship(wordId: Long, relatedId: Long, type: RelationshipType) {
+        relationshipDao.insertRelationship(
+            WordRelationshipEntity(wordId = wordId, relatedWordId = relatedId, type = type.name)
+        )
+    }
+
+    override suspend fun deleteRelationship(wordId: Long, relatedId: Long, type: RelationshipType) {
+        relationshipDao.deleteRelationship(wordId, relatedId, type.name)
+    }
+
+    override fun getRelatedWords(wordId: Long): Flow<List<RelatedWord>> {
+        return relationshipDao.getRelatedWordsFlow(wordId).map { entities ->
+            entities.map { 
+                RelatedWord(
+                    wordId = it.wordId,
+                    wordText = it.wordText,
+                    globalCount = it.globalCount,
+                    isFocusWord = it.isFocusWord,
+                    translation = it.translation,
+                    relationshipType = RelationshipType.valueOf(it.relationshipType)
+                )
+            }
+        }
+    }
+
+    private fun formatContext(book: String?, chapterNum: String?, chapterTitle: String?): String {
         if (book == null) return "Unknown Context"
-        val chapterInfo = if (chapterTitle.isNullOrBlank()) {
-            "Chapter $chapterNum"
+        val chapterInfo = if (chapterNum != null) {
+            val prefix = if (chapterNum.all { it.isDigit() }) "Chapter $chapterNum" else chapterNum
+            if (chapterTitle.isNullOrBlank()) prefix else "$prefix: $chapterTitle"
         } else {
-            "Chapter $chapterNum: $chapterTitle"
+            "Unknown Chapter"
         }
         return "$book • $chapterInfo"
     }

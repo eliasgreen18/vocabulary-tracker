@@ -16,5 +16,8 @@ data class Word(
     val reviewCount: Int = 0,
     val successfulReviews: Int = 0,
     val currentIntervalDays: Int = 0,
-    val ipa: String? = null // New field
+    val ipa: String? = null,
+    val notes: String? = null,
+    val aiExplanation: String? = null,
+    val aiExamples: String? = null
 )

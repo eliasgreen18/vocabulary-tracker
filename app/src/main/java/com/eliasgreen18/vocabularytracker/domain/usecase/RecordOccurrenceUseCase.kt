@@ -8,11 +8,12 @@ import javax.inject.Inject
 class RecordOccurrenceUseCase @Inject constructor(
     private val repository: WordRepository
 ) {
-    suspend operator fun invoke(wordId: Long, sessionId: Long) {
+    suspend operator fun invoke(wordId: Long, sessionId: Long, snippet: String? = null) {
         val occurrence = Occurrence(
             wordId = wordId,
             sessionId = sessionId,
-            createdAt = Instant.now()
+            createdAt = Instant.now(),
+            snippet = snippet
         )
         repository.insertOccurrence(occurrence)
     }

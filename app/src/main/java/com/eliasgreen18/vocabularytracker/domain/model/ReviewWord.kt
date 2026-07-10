@@ -8,6 +8,10 @@ data class ReviewWord(
     val lastReviewedAt: Long?,
     val reviewPriority: Int,
     val lastContext: String,
+    val lastSnippet: String? = null,
+    val translation: String?,
+    val ipa: String?,
+    val notes: String? = null,
     // SRS Columns
     val currentIntervalDays: Int,
     val nextReviewAt: Long?

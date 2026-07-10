@@ -3,6 +3,7 @@ package com.eliasgreen18.vocabularytracker.ui.books
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.*
@@ -25,37 +26,37 @@ class BookViewModel @Inject constructor(
     private val repository: BookRepository
 ) : ViewModel() {
 
-    val booksState: StateFlow<List<Book>> = getBooksUseCase()
+    val booksState: StateFlow<List<BookWithStats>> = getBooksUseCase()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    fun addBook(title: String, author: String, language: String) {
+    fun addBook(title: String, author: String, language: String, genre: String? = null) {
         viewModelScope.launch {
             val newBook = Book(
                 title = title,
                 author = author,
-                language = language
+                language = language,
+                genre = genre
             )
             addBookUseCase(newBook)
         }
     }
 
     fun onBookClicked(
-        book: Book, 
+        bookId: Long, 
         onSessionReady: (Long) -> Unit, 
-        onNeedChapterInfo: (Book, Int) -> Unit,
-        onAskChapterNumber: (Book) -> Unit
+        onAskChapterNumber: (Long) -> Unit
     ) {
         viewModelScope.launch {
-            repository.updateLastOpened(book.id)
-            val activeSession = getActiveSessionUseCase(book.id).first()
+            repository.updateLastOpened(bookId)
+            val activeSession = getActiveSessionUseCase(bookId).first()
             if (activeSession != null) {
                 onSessionReady(activeSession.id)
             } else {
-                onAskChapterNumber(book)
+                onAskChapterNumber(bookId)
             }
         }
     }

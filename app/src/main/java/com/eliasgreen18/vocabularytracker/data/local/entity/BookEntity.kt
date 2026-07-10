@@ -11,6 +11,7 @@ data class BookEntity(
     val title: String,
     val author: String,
     val language: String,
+    val genre: String? = null, // New column
     val lastOpenedAt: Instant? = null
 )
 
@@ -19,6 +20,7 @@ fun BookEntity.toDomain() = Book(
     title = title,
     author = author,
     language = language,
+    genre = genre,
     lastOpenedAt = lastOpenedAt
 )
 
@@ -27,5 +29,6 @@ fun Book.toEntity() = BookEntity(
     title = title,
     author = author,
     language = language,
+    genre = genre,
     lastOpenedAt = lastOpenedAt
 )

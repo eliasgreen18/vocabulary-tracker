@@ -10,19 +10,22 @@ data class OccurrenceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val wordId: Long,
     val sessionId: Long,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val snippet: String? = null
 )
 
 fun OccurrenceEntity.toDomain() = Occurrence(
     id = id,
     wordId = wordId,
     sessionId = sessionId,
-    createdAt = createdAt
+    createdAt = createdAt,
+    snippet = snippet
 )
 
 fun Occurrence.toEntity() = OccurrenceEntity(
     id = id,
     wordId = wordId,
     sessionId = sessionId,
-    createdAt = createdAt
+    createdAt = createdAt,
+    snippet = snippet
 )

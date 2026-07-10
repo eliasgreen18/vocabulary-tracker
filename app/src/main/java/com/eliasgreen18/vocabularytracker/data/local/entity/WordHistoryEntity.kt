@@ -6,7 +6,8 @@ data class WordHistoryEntity(
     val createdAt: Instant,
     val bookTitle: String,
     val bookLanguage: String,
-    val chapterNumber: Int,
+    val chapterNumber: String, // Changed from Int to String
     val chapterTitle: String?,
-    val sessionId: Long
+    val sessionId: Long,
+    val snippet: String?
 )

@@ -11,7 +11,7 @@ class RegisterWordUseCase @Inject constructor(
     private val recordOccurrenceUseCase: RecordOccurrenceUseCase,
     private val requestTranslationUseCase: RequestTranslationUseCase
 ) {
-    suspend operator fun invoke(sessionId: Long, text: String) {
+    suspend operator fun invoke(sessionId: Long, text: String, snippet: String? = null) {
         val normalizedText = text.trim().lowercase()
         if (normalizedText.isBlank()) return
 
@@ -25,8 +25,8 @@ class RegisterWordUseCase @Inject constructor(
             word.id
         }
 
-        // 1. Record the occurrence FIRST
-        recordOccurrenceUseCase(wordId, sessionId)
+        // 1. Record the occurrence FIRST (with snippet)
+        recordOccurrenceUseCase(wordId, sessionId, snippet)
         
         // 2. Refresh word state to get the LATEST metadata (including updated translation status if changed elsewhere)
         val updatedWord = repository.getWordById(wordId) ?: return

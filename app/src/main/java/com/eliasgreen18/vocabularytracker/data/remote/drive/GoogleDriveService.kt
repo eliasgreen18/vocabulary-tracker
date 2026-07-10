@@ -36,28 +36,29 @@ class GoogleDriveService @Inject constructor(
         val service = driveService ?: return@withContext Result.failure(Exception("Drive service not initialized"))
         
         try {
-            // 1. Find ALL existing files with this name in appDataFolder (including hidden/duplicates)
+            // 1. Find ALL existing files with this name across ALL spaces (including Trash)
+            // to ensure we don't have conflicts that lead to duplication
+            val query = "name = 'vocabulary_latest.db' and trashed = false"
             val result = service.files().list()
-                .setSpaces("appDataFolder")
-                .setQ("name = 'vocabulary_latest.db'")
+                .setSpaces("appDataFolder") // AppData is hidden, best for backups
+                .setQ(query)
                 .setFields("files(id, name)")
                 .execute()
             
             val existingFiles = result.files
 
-            // 2. Aggressive Cleanup: Delete ALL existing instances before creating a new one
-            // This bypasses the versioning issues in the update() API
+            // 2. Cleanup ANY existing instance to ensure a truly fresh replacement
             if (!existingFiles.isNullOrEmpty()) {
                 for (file in existingFiles) {
                     try {
                         service.files().delete(file.id).execute()
                     } catch (e: Exception) {
-                        // Log or ignore individual delete failures
+                        // Cleanup is best-effort
                     }
                 }
             }
 
-            // 3. Create fresh file
+            // 3. Create fresh file in appDataFolder
             val fileMetadata = File().apply {
                 name = "vocabulary_latest.db"
                 parents = listOf("appDataFolder")

@@ -35,6 +35,8 @@ import com.eliasgreen18.vocabularytracker.ui.words.WordsScreen
 import com.eliasgreen18.vocabularytracker.ui.words.WordDetailScreen
 import com.eliasgreen18.vocabularytracker.ui.settings.SettingsScreen
 import com.eliasgreen18.vocabularytracker.ui.notifications.NotificationCenterScreen
+import com.eliasgreen18.vocabularytracker.ui.stats.GlobalTimelineScreen
+import com.eliasgreen18.vocabularytracker.ui.stats.ReadingProfileScreen
 
 sealed class NavItem {
     data class ScreenItem(val screen: Screen, val label: String, val icon: ImageVector) : NavItem()
@@ -49,7 +51,9 @@ fun MainContainer(
     val navController = rememberNavController()
     val activeSessionId by viewModel.activeSessionId.collectAsState()
     val backupFile by viewModel.backupFile.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -67,8 +71,16 @@ fun MainContainer(
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Save Backup To..."))
+            context.startActivity(Intent.createChooser(intent, "Export Backup..."))
             viewModel.clearBackupState()
+        }
+    }
+
+    // Sync Status Toast/Snackbar
+    LaunchedEffect(syncStatus) {
+        syncStatus?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearStatus()
         }
     }
 
@@ -82,6 +94,7 @@ fun MainContainer(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->
@@ -168,7 +181,10 @@ fun MainContainer(
                         },
                         onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                         onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                        onBackupClick = { viewModel.exportBackup() }
+                        onBackupClick = { viewModel.exportBackup() },
+                        onSyncClick = { viewModel.syncToDrive() },
+                        onExportCsvClick = { viewModel.exportToCsv() },
+                        onExportJsonClick = { viewModel.exportToJson() }
                     )
                 }
                 composable(Screen.Books.route) {
@@ -178,7 +194,10 @@ fun MainContainer(
                         },
                         onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                         onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                        onBackupClick = { viewModel.exportBackup() }
+                        onBackupClick = { viewModel.exportBackup() },
+                        onSyncClick = { viewModel.syncToDrive() },
+                        onExportCsvClick = { viewModel.exportToCsv() },
+                        onExportJsonClick = { viewModel.exportToJson() }
                     )
                 }
                 composable(Screen.Review.route) {
@@ -197,7 +216,10 @@ fun MainContainer(
                         },
                         onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                         onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                        onBackupClick = { viewModel.exportBackup() }
+                        onBackupClick = { viewModel.exportBackup() },
+                        onSyncClick = { viewModel.syncToDrive() },
+                        onExportCsvClick = { viewModel.exportToCsv() },
+                        onExportJsonClick = { viewModel.exportToJson() }
                     )
                 }
                 composable(Screen.Home.route) {
@@ -207,7 +229,12 @@ fun MainContainer(
                         },
                         onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                         onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                        onBackupClick = { viewModel.exportBackup() }
+                        onNavigateToTimeline = { navController.navigate(Screen.GlobalTimeline.route) },
+                        onNavigateToProfile = { navController.navigate(Screen.ReadingProfile.route) },
+                        onBackupClick = { viewModel.exportBackup() },
+                        onSyncClick = { viewModel.syncToDrive() },
+                        onExportCsvClick = { viewModel.exportToCsv() },
+                        onExportJsonClick = { viewModel.exportToJson() }
                     )
                 }
 
@@ -217,6 +244,14 @@ fun MainContainer(
                 
                 composable(Screen.NotificationCenter.route) {
                     NotificationCenterScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(Screen.GlobalTimeline.route) {
+                    GlobalTimelineScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(Screen.ReadingProfile.route) {
+                    ReadingProfileScreen(onNavigateBack = { navController.popBackStack() })
                 }
                 
                 // Details & Flows
@@ -253,7 +288,10 @@ fun MainContainer(
                     arguments = listOf(navArgument("wordId") { type = NavType.LongType })
                 ) {
                     WordDetailScreen(
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToWordDetail = { wordId ->
+                            navController.navigate(Screen.WordDetail.createRoute(wordId))
+                        }
                     )
                 }
                 composable(

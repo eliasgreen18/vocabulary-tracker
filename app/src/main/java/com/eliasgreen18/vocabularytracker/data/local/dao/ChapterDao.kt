@@ -20,4 +20,7 @@ interface ChapterDao {
 
     @Update
     suspend fun updateChapter(chapter: ChapterEntity)
+
+    @Query("SELECT COUNT(*) FROM chapters")
+    fun getTotalChaptersCount(): Flow<Int>
 }

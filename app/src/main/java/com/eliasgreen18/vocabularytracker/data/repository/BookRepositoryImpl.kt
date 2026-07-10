@@ -4,6 +4,7 @@ import com.eliasgreen18.vocabularytracker.data.local.dao.BookDao
 import com.eliasgreen18.vocabularytracker.data.local.entity.toDomain
 import com.eliasgreen18.vocabularytracker.data.local.entity.toEntity
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,6 +17,22 @@ class BookRepositoryImpl @Inject constructor(
     override fun getAllBooks(): Flow<List<Book>> {
         return bookDao.getAllBooks().map { entities ->
             entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAllBooksWithStats(): Flow<List<BookWithStats>> {
+        return bookDao.getAllBooksWithStats().map { entities ->
+            entities.map { 
+                BookWithStats(
+                    id = it.id,
+                    title = it.title,
+                    author = it.author,
+                    language = it.language,
+                    genre = it.genre,
+                    wordCount = it.wordCount,
+                    chapterCount = it.chapterCount
+                )
+            }
         }
     }
 

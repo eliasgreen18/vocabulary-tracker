@@ -14,4 +14,13 @@ interface UserPreferencesRepository {
 
     fun isAutoScrollEnabled(): Flow<Boolean>
     suspend fun setAutoScrollEnabled(enabled: Boolean)
+
+    fun getGeminiApiKey(): Flow<String?>
+    suspend fun setGeminiApiKey(key: String?)
+
+    fun getGoogleAccountName(): Flow<String?>
+    suspend fun setGoogleAccountName(name: String?)
+
+    fun isAutoSyncEnabled(): Flow<Boolean>
+    suspend fun setAutoSyncEnabled(enabled: Boolean)
 }

@@ -166,6 +166,50 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE occurrences ADD COLUMN snippet TEXT")
+        }
+    }
+
+    private val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE words ADD COLUMN notes TEXT")
+        }
+    }
+
+    private val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `word_relationships` (
+                    `wordId` INTEGER NOT NULL, 
+                    `relatedWordId` INTEGER NOT NULL, 
+                    `type` TEXT NOT NULL, 
+                    PRIMARY KEY(`wordId`, `relatedWordId`, `type`), 
+                    FOREIGN KEY(`wordId`) REFERENCES `words`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , 
+                    FOREIGN KEY(`relatedWordId`) REFERENCES `words`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_word_relationships_wordId` ON `word_relationships` (`wordId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_word_relationships_relatedWordId` ON `word_relationships` (`relatedWordId`)")
+        }
+    }
+
+    private val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE words ADD COLUMN aiExplanation TEXT")
+            db.execSQL("ALTER TABLE words ADD COLUMN aiExamples TEXT")
+        }
+    }
+
+    private val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE books ADD COLUMN genre TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocabularyDatabase {
@@ -174,7 +218,7 @@ object DatabaseModule {
             VocabularyDatabase::class.java,
             "vocabulary_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
         .fallbackToDestructiveMigration()
         .build()
     }
@@ -193,4 +237,7 @@ object DatabaseModule {
 
     @Provides
     fun provideOccurrenceDao(database: VocabularyDatabase) = database.occurrenceDao()
+
+    @Provides
+    fun provideRelationshipDao(database: VocabularyDatabase) = database.relationshipDao()
 }

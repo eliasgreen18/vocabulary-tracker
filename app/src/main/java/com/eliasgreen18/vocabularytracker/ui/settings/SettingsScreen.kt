@@ -1,5 +1,8 @@
 package com.eliasgreen18.vocabularytracker.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,9 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.api.services.drive.DriveScopes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,8 +34,43 @@ fun SettingsScreen(
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val notificationTime by viewModel.notificationTime.collectAsState()
     val autoScrollEnabled by viewModel.autoScrollEnabled.collectAsState()
+    val importStatus by viewModel.importStatus.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState()
+    val googleAccountName by viewModel.googleAccountName.collectAsState()
+    val autoSyncEnabled by viewModel.autoSyncEnabled.collectAsState()
 
+    val context = LocalContext.current
     var showTimePicker by remember { mutableStateOf(false) }
+    var showImportConfirmDialog by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Google Sign-In Launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            account?.email?.let { viewModel.onGoogleAccountConnected(it) }
+        } catch (e: ApiException) {
+            // Handle error
+        }
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            pendingImportUri = uri
+            showImportConfirmDialog = true
+        }
+    }
+
+    // Reset import status on entry
+    LaunchedEffect(Unit) {
+        viewModel.clearImportStatus()
+    }
 
     Scaffold(
         topBar = {
@@ -87,21 +131,56 @@ fun SettingsScreen(
             SettingsHeader("Cloud Synchronization")
             
             SettingsClickableItem(
-                title = "Connect to Google Drive",
-                description = "Secure your vocabulary in the cloud automatically.",
-                icon = Icons.Default.Backup,
-                onClick = { /* TODO: Launch Google Sign-In */ }
+                title = if (googleAccountName == null) "Connect to Google Drive" else "Connected to Google",
+                description = googleAccountName ?: "Secure your vocabulary in the cloud automatically.",
+                icon = if (googleAccountName == null) Icons.Default.Cloud else Icons.Default.CloudDone,
+                onClick = { 
+                    if (googleAccountName == null) {
+                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestEmail()
+                            .requestScopes(com.google.android.gms.common.api.Scope(DriveScopes.DRIVE_APPDATA))
+                            .build()
+                        val client = GoogleSignIn.getClient(context, gso)
+                        googleSignInLauncher.launch(client.signInIntent)
+                    } else {
+                        // Option to disconnect
+                        viewModel.disconnectGoogleAccount()
+                    }
+                }
             )
 
             SettingsToggleItem(
                 title = "Auto-sync data",
                 description = "Upload backup after every reading session.",
-                icon = Icons.Default.Cached,
-                checked = false, // TODO: Link to preference
-                onCheckedChange = { /* TODO: Handle toggle */ }
+                icon = Icons.Default.CloudSync,
+                checked = autoSyncEnabled,
+                enabled = googleAccountName != null,
+                onCheckedChange = { viewModel.setAutoSyncEnabled(it) }
             )
 
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+            // AI Features Section
+            SettingsHeader("AI Features")
+
+            SettingsClickableItem(
+                title = "Gemini API Key",
+                description = if (geminiApiKey.isNullOrBlank()) "Add key to enable AI Tutor" else "••••••••",
+                icon = Icons.Default.AutoAwesome,
+                onClick = { showApiKeyDialog = true }
+            )
+
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Data Section
+            SettingsHeader("Backup & Data")
+
+            SettingsClickableItem(
+                title = "Import Vocabulary",
+                description = "Load words from a CSV or JSON file.",
+                icon = Icons.Default.FileUpload,
+                onClick = { filePickerLauncher.launch("*/*") }
+            )
 
             SettingsToggleItem(
                 title = "Keep backup history",
@@ -110,6 +189,31 @@ fun SettingsScreen(
                 checked = keepHistory,
                 onCheckedChange = { viewModel.setKeepBackupHistory(it) }
             )
+
+            if (importStatus != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = importStatus!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(onClick = { viewModel.clearImportStatus() }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -152,6 +256,70 @@ fun SettingsScreen(
                 }
             )
         }
+
+        if (showImportConfirmDialog) {
+            var overwrite by remember { mutableStateOf(false) }
+            AlertDialog(
+                onDismissRequest = { showImportConfirmDialog = false },
+                title = { Text("Confirm Import") },
+                text = {
+                    Column {
+                        Text("Do you want to import words from the selected file?")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = overwrite, onCheckedChange = { overwrite = it })
+                            Text(text = "Overwrite existing translations", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        pendingImportUri?.let { uri ->
+                            val ext = if (uri.toString().endsWith(".json")) "json" else "csv"
+                            viewModel.importData(uri, ext, overwrite)
+                        }
+                        showImportConfirmDialog = false
+                    }) {
+                        Text("Import")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showImportConfirmDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+
+        if (showApiKeyDialog) {
+            var key by remember { mutableStateOf(geminiApiKey ?: "") }
+            AlertDialog(
+                onDismissRequest = { showApiKeyDialog = false },
+                title = { Text("Gemini API Key") },
+                text = {
+                    Column {
+                        Text("Get a free key from Google AI Studio to power your AI Tutor.", style = MaterialTheme.typography.bodySmall)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = key,
+                            onValueChange = { key = it },
+                            label = { Text("API Key") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        viewModel.setGeminiApiKey(key.trim().ifBlank { null })
+                        showApiKeyDialog = false
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showApiKeyDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
 
@@ -172,6 +340,7 @@ fun SettingsToggleItem(
     description: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -183,18 +352,28 @@ fun SettingsToggleItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    text = title, 
+                    style = MaterialTheme.typography.bodyLarge, 
+                    fontWeight = FontWeight.Medium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = description, 
+                    style = MaterialTheme.typography.bodySmall, 
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
         )
     }
 }

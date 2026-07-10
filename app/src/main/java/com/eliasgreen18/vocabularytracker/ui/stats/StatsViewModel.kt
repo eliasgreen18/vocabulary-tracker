@@ -18,8 +18,32 @@ class StatsViewModel @Inject constructor(
     getHomeDashboardUseCase: GetHomeDashboardUseCase,
     getLearningProgressUseCase: GetLearningProgressUseCase,
     getGlobalStatsUseCase: GetGlobalStatsUseCase,
-    getDueWordsUseCase: GetDueWordsUseCase
+    getDueWordsUseCase: GetDueWordsUseCase,
+    getReadingAnalyticsUseCase: GetReadingAnalyticsUseCase,
+    getActivityHeatmapUseCase: GetActivityHeatmapUseCase,
+    getMasteryAnalyticsUseCase: GetMasteryAnalyticsUseCase
 ) : ViewModel() {
+
+    val masteryState: StateFlow<com.eliasgreen18.vocabularytracker.domain.model.MasteryAnalytics?> = getMasteryAnalyticsUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val heatmapState: StateFlow<com.eliasgreen18.vocabularytracker.domain.model.ActivityHeatmap?> = getActivityHeatmapUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val analyticsState: StateFlow<com.eliasgreen18.vocabularytracker.domain.model.ReadingAnalytics?> = getReadingAnalyticsUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     val dashboardState: StateFlow<HomeDashboard?> = getHomeDashboardUseCase()
         .stateIn(

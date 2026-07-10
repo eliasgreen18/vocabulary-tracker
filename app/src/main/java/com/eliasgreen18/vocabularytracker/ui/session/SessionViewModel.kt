@@ -100,12 +100,13 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    fun recordWord(text: String) {
+    fun recordWord(text: String, snippet: String? = null) {
         val normalized = text.trim().lowercase()
         if (normalized.isBlank()) return
 
         val now = System.currentTimeMillis()
-        if (normalized == lastRecordedWord && (now - lastRecordedTimestamp) < 1000) {
+        // Prevent duplicate spam within 1 second for the SAME word, UNLESS a snippet is provided (which makes it unique context)
+        if (snippet == null && normalized == lastRecordedWord && (now - lastRecordedTimestamp) < 1000) {
             return
         }
 
@@ -113,7 +114,7 @@ class SessionViewModel @Inject constructor(
         lastRecordedTimestamp = now
 
         viewModelScope.launch {
-            registerWordUseCase(sessionId, normalized)
+            registerWordUseCase(sessionId, normalized, snippet)
         }
     }
 

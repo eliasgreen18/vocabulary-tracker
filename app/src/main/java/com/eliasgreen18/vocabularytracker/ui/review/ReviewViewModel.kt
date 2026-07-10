@@ -26,6 +26,9 @@ class ReviewViewModel @Inject constructor(
     private val _currentIndex = MutableStateFlow(0)
     val currentIndex = _currentIndex.asStateFlow()
 
+    private val _isRevealed = MutableStateFlow(false)
+    val isRevealed = _isRevealed.asStateFlow()
+
     private val _lastReviewFeedback = MutableStateFlow<String?>(null)
     val lastReviewFeedback = _lastReviewFeedback.asStateFlow()
 
@@ -42,6 +45,10 @@ class ReviewViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = 0
     )
+
+    fun reveal() {
+        _isRevealed.value = true
+    }
 
     fun onRemembered() {
         val word = currentWord.value ?: return
@@ -77,6 +84,7 @@ class ReviewViewModel @Inject constructor(
     }
 
     private fun nextWord() {
+        _isRevealed.value = false
         _currentIndex.value++
     }
 }

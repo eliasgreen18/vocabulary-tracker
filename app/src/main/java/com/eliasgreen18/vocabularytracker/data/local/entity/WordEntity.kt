@@ -21,7 +21,10 @@ data class WordEntity(
     val reviewCount: Int = 0,
     val successfulReviews: Int = 0,
     val currentIntervalDays: Int = 0,
-    val ipa: String? = null // New column
+    val ipa: String? = null,
+    val notes: String? = null,
+    val aiExplanation: String? = null,
+    val aiExamples: String? = null
 )
 
 fun WordEntity.toDomain() = Word(
@@ -37,7 +40,10 @@ fun WordEntity.toDomain() = Word(
     reviewCount = reviewCount,
     successfulReviews = successfulReviews,
     currentIntervalDays = currentIntervalDays,
-    ipa = ipa
+    ipa = ipa,
+    notes = notes,
+    aiExplanation = aiExplanation,
+    aiExamples = aiExamples
 )
 
 fun Word.toEntity() = WordEntity(
@@ -53,5 +59,8 @@ fun Word.toEntity() = WordEntity(
     reviewCount = reviewCount,
     successfulReviews = successfulReviews,
     currentIntervalDays = currentIntervalDays,
-    ipa = ipa
+    ipa = ipa,
+    notes = notes,
+    aiExplanation = aiExplanation,
+    aiExamples = aiExamples
 )

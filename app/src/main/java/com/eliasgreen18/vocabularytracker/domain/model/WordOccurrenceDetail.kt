@@ -6,15 +6,19 @@ data class WordOccurrenceDetail(
     val createdAt: Instant,
     val bookTitle: String,
     val bookLanguage: String,
-    val chapterNumber: Int,
+    val chapterNumber: String, // Changed from Int to String
     val chapterTitle: String?,
-    val sessionId: Long
+    val sessionId: Long,
+    val snippet: String? = null
 ) {
     val displayChapter: String
-        get() = if (chapterTitle.isNullOrBlank()) {
-            "Chapter $chapterNumber"
-        } else {
-            "Chapter $chapterNumber: $chapterTitle"
+        get() {
+            val prefix = if (chapterNumber.all { it.isDigit() }) "Chapter $chapterNumber" else chapterNumber
+            return if (chapterTitle.isNullOrBlank()) {
+                prefix
+            } else {
+                "$prefix: $chapterTitle"
+            }
         }
     
     val displaySession: String

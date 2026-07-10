@@ -7,6 +7,7 @@ data class GlobalStats(
     val learningWordsCount: Int,
     val learnedWordsCount: Int,
     val translatedWordsCount: Int,
+    val totalChaptersCount: Int, // New field
     // SRS Stats
     val totalReviewsDone: Int,
     val successfulReviews: Int,

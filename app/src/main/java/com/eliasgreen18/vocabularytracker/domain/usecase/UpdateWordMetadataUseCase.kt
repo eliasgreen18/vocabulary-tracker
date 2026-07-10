@@ -18,4 +18,9 @@ class UpdateWordMetadataUseCase @Inject constructor(
             repository.updateIpa(wordId, ipa.trim())
         }
     }
+
+    suspend fun updateNotes(wordId: Long, notes: String) {
+        // Notes can be empty if the user wants to clear them
+        repository.updateNotes(wordId, notes.trim().ifBlank { null })
+    }
 }

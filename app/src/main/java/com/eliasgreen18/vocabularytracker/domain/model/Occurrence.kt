@@ -6,5 +6,6 @@ data class Occurrence(
     val id: Long = 0,
     val wordId: Long,
     val sessionId: Long,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val snippet: String? = null
 )

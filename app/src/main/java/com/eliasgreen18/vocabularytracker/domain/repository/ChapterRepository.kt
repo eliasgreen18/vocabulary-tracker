@@ -9,4 +9,5 @@ interface ChapterRepository {
     suspend fun getChapterById(chapterId: Long): Chapter?
     suspend fun insertChapter(chapter: Chapter): Long
     suspend fun updateChapter(chapter: Chapter)
+    fun getTotalChaptersCount(): Flow<Int>
 }

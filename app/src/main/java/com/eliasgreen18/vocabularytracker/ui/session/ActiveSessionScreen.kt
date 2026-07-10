@@ -49,6 +49,9 @@ fun ActiveSessionScreen(
 
     var showEditDialog by remember { mutableStateOf(false) }
     var wordText by remember { mutableStateOf("") }
+    var snippetText by remember { mutableStateOf("") }
+    var showSnippetField by remember { mutableStateOf(false) }
+    
     val focusRequester = remember { FocusRequester() }
 
     // Auto-scroll logic: pin to top instantly if enabled
@@ -112,7 +115,7 @@ fun ActiveSessionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Focus Input Field
+            // Focus Input Field Area
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,24 +130,33 @@ fun ActiveSessionScreen(
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardOptions = KeyboardOptions(imeAction = if (showSnippetField) ImeAction.Next else ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
                             if (wordText.isNotBlank()) {
-                                val word = wordText.trim()
-                                viewModel.recordWord(word)
+                                viewModel.recordWord(wordText.trim(), snippetText.ifBlank { null })
                                 wordText = ""
+                                snippetText = ""
                                 focusRequester.requestFocus()
                             }
                         }
                     ),
+                    leadingIcon = {
+                        IconButton(onClick = { showSnippetField = !showSnippetField }) {
+                            Icon(
+                                imageVector = Icons.Default.FormatQuote,
+                                contentDescription = "Context",
+                                tint = if (showSnippetField) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    },
                     trailingIcon = {
                         IconButton(
                             onClick = {
                                 if (wordText.isNotBlank()) {
-                                    val word = wordText.trim()
-                                    viewModel.recordWord(word)
+                                    viewModel.recordWord(wordText.trim(), snippetText.ifBlank { null })
                                     wordText = ""
+                                    snippetText = ""
                                     focusRequester.requestFocus()
                                 }
                             },
@@ -155,6 +167,24 @@ fun ActiveSessionScreen(
                     },
                     shape = MaterialTheme.shapes.extraLarge
                 )
+
+                AnimatedVisibility(
+                    visible = showSnippetField,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    OutlinedTextField(
+                        value = snippetText,
+                        onValueChange = { snippetText = it },
+                        placeholder = { Text("Enter context sentence (optional)...") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        maxLines = 3,
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

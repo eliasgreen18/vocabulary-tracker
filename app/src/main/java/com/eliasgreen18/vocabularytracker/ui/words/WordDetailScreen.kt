@@ -1,5 +1,6 @@
 package com.eliasgreen18.vocabularytracker.ui.words
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,39 +22,75 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.eliasgreen18.vocabularytracker.domain.model.JourneyEvent
+import com.eliasgreen18.vocabularytracker.domain.model.RelationshipType
 import com.eliasgreen18.vocabularytracker.domain.model.WordDetailUiState
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
-import com.eliasgreen18.vocabularytracker.domain.model.WordOccurrenceDetail
 import com.eliasgreen18.vocabularytracker.ui.util.ExternalTranslationHelper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WordDetailScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToWordDetail: (Long) -> Unit,
     viewModel: WordDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isAiLoading by viewModel.isAiLoading.collectAsState()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     
     var showEditWordDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showEditTranslationDialog by remember { mutableStateOf(false) }
     var showEditIpaDialog by remember { mutableStateOf(false) }
+    var showEditNotesDialog by remember { mutableStateOf(false) }
+    var showAddRelationshipDialog by remember { mutableStateOf(false) }
     
     var wordTextToEdit by remember { mutableStateOf("") }
     var translationToEdit by remember { mutableStateOf("") }
     var ipaToEdit by remember { mutableStateOf("") }
+    var notesToEdit by remember { mutableStateOf("") }
 
-    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
-        .withZone(ZoneId.systemDefault())
     val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
         .withZone(ZoneId.systemDefault())
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is WordDetailUiEvent.ShowError -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        withDismissAction = true
+                    )
+                }
+                WordDetailUiEvent.InsightsGenerated -> {
+                    snackbarHostState.showSnackbar("AI Insights generated!")
+                }
+            }
+        }
+    }
+
     Scaffold(
+        snackbarHost = { 
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    containerColor = if (data.visuals.message.contains("Error", ignoreCase = true) || data.visuals.message.contains("fail", ignoreCase = true)) 
+                        MaterialTheme.colorScheme.errorContainer 
+                    else 
+                        MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = if (data.visuals.message.contains("Error", ignoreCase = true) || data.visuals.message.contains("fail", ignoreCase = true)) 
+                        MaterialTheme.colorScheme.onErrorContainer 
+                    else 
+                        MaterialTheme.colorScheme.onSecondaryContainer,
+                    snackbarData = data
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Word Detail") },
@@ -158,34 +195,106 @@ fun WordDetailScreen(
                     )
                 }
 
-                // Timeline Section
-                item {
-                    TimelineCard(state, dateFormatter)
-                }
-
                 // Action Hub (External)
                 item {
                     ExternalResourcesSection(state.word.text, context)
                 }
 
-                // Future Placeholders
+                // Personal Notes Section
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        PlaceholderSection(title = "Notes & Examples", icon = Icons.AutoMirrored.Filled.NoteAdd)
-                    }
-                }
-
-                // History Feed
-                item {
-                    Text(
-                        text = "Appearance History",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                    EditableDataCard(
+                        label = "Personal Notes & Mnemonics",
+                        value = state.word.notes,
+                        placeholder = "Add your own tricks or rules here...",
+                        onEdit = {
+                            notesToEdit = state.word.notes ?: ""
+                            showEditNotesDialog = true
+                        },
+                        icon = Icons.AutoMirrored.Filled.NoteAdd
                     )
                 }
 
-                items(state.history) { occurrence ->
-                    HistoryCard(occurrence, dateTimeFormatter)
+                // AI Tutor Section
+                item {
+                    AiTutorSection(
+                        word = state.word,
+                        isLoading = isAiLoading,
+                        onAskAi = { viewModel.generateAiInsights() }
+                    )
+                }
+
+                // Related Words Section
+                item {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Related Words",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            IconButton(onClick = { showAddRelationshipDialog = true }) {
+                                Icon(Icons.Default.AddLink, contentDescription = "Add relationship")
+                            }
+                        }
+                        
+                        if (state.relatedWords.isEmpty()) {
+                            Text(
+                                text = "No words linked yet.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        } else {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                state.relatedWords.forEach { related ->
+                                    val (color, label) = when (related.relationshipType) {
+                                        RelationshipType.SYNONYM -> Color(0xFF4CAF50) to "Synonym"
+                                        RelationshipType.ANTONYM -> MaterialTheme.colorScheme.error to "Antonym"
+                                        RelationshipType.RELATED -> MaterialTheme.colorScheme.secondary to "Related"
+                                    }
+                                    
+                                    FilterChip(
+                                        selected = true,
+                                        onClick = { onNavigateToWordDetail(related.wordId) },
+                                        label = { Text("${related.wordText} ($label)") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = color.copy(alpha = 0.1f),
+                                            selectedLabelColor = color
+                                        ),
+                                        trailingIcon = {
+                                            IconButton(
+                                                onClick = { viewModel.deleteRelationship(related.wordId, related.relationshipType) },
+                                                modifier = Modifier.size(16.dp)
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Vocabulary Journey (Timeline)
+                item {
+                    Column {
+                        Text(
+                            text = "Vocabulary Journey",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        JourneyTimeline(events = state.journey, dateTimeFormatter = dateTimeFormatter)
+                    }
                 }
 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -237,6 +346,26 @@ fun WordDetailScreen(
             )
         }
 
+        if (showEditNotesDialog) {
+            EditValueDialog(
+                title = "Personal Notes",
+                label = "Rules or mnemonics",
+                initialValue = notesToEdit,
+                onDismiss = { showEditNotesDialog = false },
+                onConfirm = {
+                    viewModel.saveManualNotes(it)
+                    showEditNotesDialog = false
+                }
+            )
+        }
+
+        if (showAddRelationshipDialog) {
+            AddRelationshipDialog(
+                viewModel = viewModel,
+                onDismiss = { showAddRelationshipDialog = false }
+            )
+        }
+
         if (showDeleteConfirmDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmDialog = false },
@@ -258,6 +387,153 @@ fun WordDetailScreen(
                         Text("Cancel")
                     }
                 }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AddRelationshipDialog(
+    viewModel: WordDetailViewModel,
+    onDismiss: () -> Unit
+) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val results by viewModel.searchResults.collectAsState()
+    var selectedType by remember { mutableStateOf(RelationshipType.SYNONYM) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Link Related Word") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Link as:", style = MaterialTheme.typography.labelSmall)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RelationshipType.entries.forEach { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
+                
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                    label = { Text("Search word to link") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Box(modifier = Modifier.heightIn(max = 200.dp)) {
+                    LazyColumn {
+                        items(results) { word ->
+                            ListItem(
+                                headlineContent = { Text(word.wordText) },
+                                modifier = Modifier.clickable {
+                                    viewModel.addRelationship(word.wordId, selectedType)
+                                    onDismiss()
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun JourneyTimeline(events: List<JourneyEvent>, dateTimeFormatter: DateTimeFormatter) {
+    if (events.isEmpty()) {
+        Text(text = "The journey hasn't started yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+    } else {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            events.forEachIndexed { index, event ->
+                JourneyEventItem(
+                    event = event,
+                    isLast = index == events.size - 1,
+                    formatter = dateTimeFormatter
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun JourneyEventItem(event: JourneyEvent, isLast: Boolean, formatter: DateTimeFormatter) {
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp)) {
+            val (icon, color) = when (event) {
+                is JourneyEvent.Discovery -> Icons.Default.Search to MaterialTheme.colorScheme.primary
+                is JourneyEvent.Encounter -> Icons.AutoMirrored.Filled.MenuBook to MaterialTheme.colorScheme.secondary
+                is JourneyEvent.Reviewed -> Icons.Default.History to Color(0xFF4CAF50)
+                is JourneyEvent.Mastered -> Icons.Default.Stars to Color(0xFFFFD700)
+            }
+            
+            Box(
+                modifier = Modifier.size(32.dp).clip(CircleShape).background(color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            }
+            
+            if (!isLast) {
+                Box(
+                    modifier = Modifier.width(2.dp).weight(1f).background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
+        }
+        
+        Column(modifier = Modifier.padding(start = 12.dp, bottom = 24.dp).weight(1f)) {
+            val title = when (event) {
+                is JourneyEvent.Discovery -> "First Discovery"
+                is JourneyEvent.Encounter -> "Encountered again"
+                is JourneyEvent.Reviewed -> "Knowledge Check"
+                is JourneyEvent.Mastered -> "Mastery Achieved!"
+            }
+            
+            val description = when (event) {
+                is JourneyEvent.Discovery -> "${event.bookTitle}\n${event.chapterDisplay}"
+                is JourneyEvent.Encounter -> "${event.bookTitle}\n${event.chapterDisplay}"
+                is JourneyEvent.Reviewed -> "Studied with ${event.nextInterval} day interval"
+                is JourneyEvent.Mastered -> "Word officially learned"
+            }
+
+            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            val snippet = when (event) {
+                is JourneyEvent.Discovery -> event.snippet
+                is JourneyEvent.Encounter -> event.snippet
+                else -> null
+            }
+            
+            if (!snippet.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "\"$snippet\"",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
+
+            Text(
+                text = formatter.format(event.timestamp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
@@ -418,59 +694,72 @@ fun MemoryPerformanceCard(state: WordDetailUiState) {
 }
 
 @Composable
-fun TimelineCard(state: WordDetailUiState, formatter: DateTimeFormatter) {
+fun AiTutorSection(
+    word: com.eliasgreen18.vocabularytracker.domain.model.Word,
+    isLoading: Boolean,
+    onAskAi: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("First encounter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                Text(
-                    text = state.firstSeen?.let { formatter.format(it) } ?: "Never",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "AI Tutor Insights", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
+                
+                if (word.aiExplanation == null) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        TextButton(onClick = onAskAi) {
+                            Text("✨ Generate")
+                        }
+                    }
+                }
             }
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text("Last encounter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                Text(
-                    text = state.lastSeen?.let { formatter.format(it) } ?: "Never",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
-}
 
-@Composable
-fun ExternalResourcesSection(text: String, context: android.content.Context) {
-    Column {
-        Text("Quick Lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { ExternalTranslationHelper.openGoogleTranslate(context, text) },
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Google", style = MaterialTheme.typography.labelLarge)
-            }
-            Button(
-                onClick = { ExternalTranslationHelper.openReversoContext(context, text) },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Reverso", style = MaterialTheme.typography.labelLarge)
+            if (word.aiExplanation != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = word.aiExplanation!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                if (!word.aiExamples.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Usage Examples:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = word.aiExamples!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            } else if (!isLoading) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Unlock deep linguistic insights, nuances, and natural examples with Gemini AI.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
         }
     }
@@ -520,62 +809,30 @@ fun DetailStatItem(label: String, value: String, icon: androidx.compose.ui.graph
 }
 
 @Composable
-fun HistoryCard(occurrence: WordOccurrenceDetail, formatter: DateTimeFormatter) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outline)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = occurrence.bookTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = occurrence.displayChapter,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+fun ExternalResourcesSection(text: String, context: android.content.Context) {
+    Column {
+        Text("Quick Lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { ExternalTranslationHelper.openGoogleTranslate(context, text) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "• ${occurrence.displaySession}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                Text("Google", style = MaterialTheme.typography.labelLarge)
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = formatter.format(occurrence.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-fun PlaceholderSection(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = title, 
-                style = MaterialTheme.typography.bodyMedium, 
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            )
+            Button(
+                onClick = { ExternalTranslationHelper.openReversoContext(context, text) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reverso", style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }

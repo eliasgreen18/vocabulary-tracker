@@ -13,6 +13,8 @@ interface WordRepository {
     suspend fun insertWord(word: Word): Long
     suspend fun updateWordText(wordId: Long, newText: String)
     suspend fun updateIpa(wordId: Long, ipa: String?)
+    suspend fun updateNotes(wordId: Long, notes: String?)
+    suspend fun updateAiInsights(wordId: Long, explanation: String?, examples: String?)
     suspend fun deleteWord(wordId: Long)
     suspend fun insertOccurrence(occurrence: Occurrence): Long
     suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long)
@@ -22,6 +24,7 @@ interface WordRepository {
     fun getChapterWords(chapterId: Long): Flow<List<WordWithCount>>
     fun getWordHistory(wordId: Long): Flow<List<WordOccurrenceDetail>>
     fun searchWords(query: String): Flow<List<WordWithCount>>
+    fun getAllWordsWithCount(): Flow<List<WordWithCount>>
     fun getFocusWords(): Flow<List<WordWithCount>>
     suspend fun updateFocusStatus(wordId: Long, isFocus: Boolean)
     fun getTotalWordsCount(): Flow<Int>
@@ -47,4 +50,19 @@ interface WordRepository {
     fun getTopWordsForBook(bookId: Long, limit: Int): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordWithCount>>
     fun getTopWordsForChapter(chapterId: Long, limit: Int): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordWithCount>>
     fun getWordsForBook(bookId: Long): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordWithCount>>
+    
+    // Analytics
+    fun getBookContributions(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.BookContribution>>
+    fun getChapterDifficulties(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.ChapterDifficulty>>
+    fun getDailyActivity(): Flow<Map<java.time.LocalDate, Int>>
+    fun getWordsByHitsRangeCount(min: Int, max: Int): Flow<Int>
+    fun getWordsAboveHitsCount(min: Int): Flow<Int>
+    fun getForgottenWordsCount(): Flow<Int>
+    fun getAuthorStats(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.AuthorStats>>
+    fun getWordDiscoveries(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordDiscovery>>
+    
+    // Relationships
+    suspend fun addRelationship(wordId: Long, relatedId: Long, type: com.eliasgreen18.vocabularytracker.domain.model.RelationshipType)
+    suspend fun deleteRelationship(wordId: Long, relatedId: Long, type: com.eliasgreen18.vocabularytracker.domain.model.RelationshipType)
+    fun getRelatedWords(wordId: Long): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.RelatedWord>>
 }

@@ -10,6 +10,8 @@ data class WordDetailUiState(
     val firstSeen: Instant?,
     val lastSeen: Instant?,
     val history: List<WordOccurrenceDetail> = emptyList(),
+    val journey: List<JourneyEvent> = emptyList(),
+    val relatedWords: List<RelatedWord> = emptyList(),
     // SRS Stats
     val nextReviewDate: Instant? = null,
     val currentInterval: Int = 0,

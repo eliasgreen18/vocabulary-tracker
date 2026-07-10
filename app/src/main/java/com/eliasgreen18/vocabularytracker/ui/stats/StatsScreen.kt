@@ -2,15 +2,20 @@ package com.eliasgreen18.vocabularytracker.ui.stats
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eliasgreen18.vocabularytracker.domain.model.GlobalStats
-import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
+import com.eliasgreen18.vocabularytracker.domain.model.StreakInfo
+import com.eliasgreen18.vocabularytracker.ui.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,11 +23,19 @@ fun StatsScreen(
     onNavigateToReview: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToTimeline: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onBackupClick: () -> Unit,
+    onSyncClick: () -> Unit,
+    onExportCsvClick: () -> Unit,
+    onExportJsonClick: () -> Unit,
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val globalStats by viewModel.globalStats.collectAsState()
     val dueCount by viewModel.dueCount.collectAsState()
+    val analytics by viewModel.analyticsState.collectAsState()
+    val heatmap by viewModel.heatmapState.collectAsState()
+    val mastery by viewModel.masteryState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -30,7 +43,10 @@ fun StatsScreen(
                 title = "Dashboard",
                 onNavigateToSettings = onNavigateToSettings,
                 onNavigateToNotifications = onNavigateToNotifications,
-                onBackupClick = onBackupClick
+                onBackupClick = onBackupClick,
+                onSyncClick = onSyncClick,
+                onExportCsvClick = onExportCsvClick,
+                onExportJsonClick = onExportJsonClick
             )
         }
     ) { innerPadding ->
@@ -47,10 +63,85 @@ fun StatsScreen(
             ) {
                 item {
                     Text(
-                        text = "Your Progress",
+                        text = "Learning Progress",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            onClick = onNavigateToTimeline,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Full Timeline")
+                        }
+                        TextButton(
+                            onClick = onNavigateToProfile,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Reading Profile")
+                        }
+                    }
+                }
+
+                // Consistency Section
+                heatmap?.let { data ->
+                    item {
+                        StreakCard(streakInfo = data.streakInfo)
+                    }
+                    
+                    item {
+                        AnalyticsSection(
+                            title = "Activity Intensity",
+                            description = "Your consistency over the last 12 weeks."
+                        ) {
+                            ActivityHeatmapChart(activity = data.dailyActivity)
+                        }
+                    }
+                }
+
+                // Mastery Section
+                mastery?.let { data ->
+                    item {
+                        AnalyticsSection(
+                            title = "Vocabulary Mastery",
+                            description = "Distribution of your collection by knowledge level."
+                        ) {
+                            MasteryDistributionChart(
+                                newCount = data.distribution.newCount,
+                                learningCount = data.distribution.learningCount,
+                                learnedCount = data.distribution.learnedCount
+                            )
+                        }
+                    }
+                    
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                StatColumn(label = "Accuracy", value = "${data.recallAccuracy}%")
+                                VerticalDivider(modifier = Modifier.height(32.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                StatColumn(label = "Forgotten", value = data.forgottenWordsCount)
+                                VerticalDivider(modifier = Modifier.height(32.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                StatColumn(label = "Velocity", value = "+${data.learningVelocity}")
+                            }
+                        }
+                    }
                 }
 
                 if (dueCount > 0) {
@@ -67,9 +158,144 @@ fun StatsScreen(
                         }
                     }
                 }
+
+                analytics?.let { data ->
+                    data.mostChallengingChapter?.let { chapter ->
+                        item {
+                            ToughAuthorCard(
+                                authorName = chapter.bookTitle,
+                                wordCount = chapter.uniqueWordsCount
+                            )
+                        }
+                    }
+
+                    if (data.wordsPerBook.isNotEmpty()) {
+                        item {
+                            AnalyticsSection(
+                                title = "Words per Book",
+                                description = "Unique vocabulary contributed by each book."
+                            ) {
+                                SimpleBarChart(
+                                    items = data.wordsPerBook.map { ChartItem(it.bookTitle, it.uniqueWordsCount) },
+                                    barColor = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    if (data.wordsPerChapter.isNotEmpty()) {
+                        item {
+                            AnalyticsSection(
+                                title = "Most Challenging Chapters",
+                                description = "Chapters with the highest density of new words."
+                            ) {
+                                SimpleBarChart(
+                                    items = data.wordsPerChapter.map { ChartItem("${it.bookTitle} - ${it.chapterNumber}", it.uniqueWordsCount) },
+                                    barColor = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    }
+                }
                 
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
+        }
+    }
+}
+
+@Composable
+fun ToughAuthorCard(authorName: String, wordCount: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Psychology, 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "MOST CHALLENGING AUTHOR",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = authorName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = "$wordCount unique words in a single chapter.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StreakCard(streakInfo: StreakInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.LocalFireDepartment, 
+                    contentDescription = null, 
+                    tint = if (streakInfo.currentStreak > 0) Color(0xFFFF9800) else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(32.dp)
+                )
+                Text(text = streakInfo.currentStreak.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(text = "CURRENT STREAK", style = MaterialTheme.typography.labelSmall)
+            }
+            
+            VerticalDivider(modifier = Modifier.height(48.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.EmojiEvents, 
+                    contentDescription = null, 
+                    tint = Color(0xFFFFD700),
+                    modifier = Modifier.size(32.dp)
+                )
+                Text(text = streakInfo.longestStreak.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(text = "ALL-TIME BEST", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+fun AnalyticsSection(
+    title: String,
+    description: String,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(text = description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            Spacer(modifier = Modifier.height(16.dp))
+            content()
         }
     }
 }

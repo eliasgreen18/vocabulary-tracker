@@ -58,6 +58,23 @@ interface WordDao {
     """)
     fun searchWordsWithCount(query: String): Flow<List<WordWithCountEntity>>
 
+    @Query("SELECT * FROM words WHERE text LIKE '%' || :query || '%'")
+    fun searchWords(query: String): Flow<List<WordEntity>>
+
+    @Query("""
+        SELECT 
+            w.id as wordId,
+            w.text as wordText,
+            0 as sessionCount,
+            (SELECT COUNT(*) FROM occurrences o WHERE o.wordId = w.id) as globalCount,
+            w.isFocusWord as isFocusWord,
+            w.translation as translation,
+            w.translationStatus as translationStatus
+        FROM words w
+        ORDER BY globalCount DESC, w.text ASC
+    """)
+    fun getAllWordsWithCount(): Flow<List<WordWithCountEntity>>
+
     @Query("SELECT * FROM words")
     fun getAllWords(): Flow<List<WordEntity>>
 
@@ -72,6 +89,12 @@ interface WordDao {
 
     @Query("UPDATE words SET ipa = :ipa WHERE id = :wordId")
     suspend fun updateIpa(wordId: Long, ipa: String?)
+
+    @Query("UPDATE words SET notes = :notes WHERE id = :wordId")
+    suspend fun updateNotes(wordId: Long, notes: String?)
+
+    @Query("UPDATE words SET aiExplanation = :explanation, aiExamples = :examples WHERE id = :wordId")
+    suspend fun updateAiInsights(wordId: Long, explanation: String?, examples: String?)
 
     @Query("SELECT * FROM words WHERE translationStatus IN ('PENDING', 'LOADING', 'ERROR')")
     fun getPendingTranslations(): Flow<List<WordEntity>>
@@ -111,11 +134,15 @@ interface WordDao {
             b.title as lastBookTitle,
             c.number as lastChapterNumber,
             c.title as lastChapterTitle,
+            last_o.snippet as snippet,
+            w.translation as translation,
+            w.ipa as ipa,
+            w.notes as notes,
             w.currentIntervalDays as currentIntervalDays,
             w.nextReviewAt as nextReviewAt
         FROM words w
         LEFT JOIN (
-            SELECT wordId, sessionId, MAX(createdAt) 
+            SELECT wordId, sessionId, snippet, MAX(createdAt)
             FROM occurrences 
             GROUP BY wordId
         ) last_o ON w.id = last_o.wordId
@@ -136,4 +163,39 @@ interface WordDao {
 
     @Query("SELECT SUM(reviewCount) FROM words")
     fun getTotalReviewAttemptsCount(): Flow<Int>
+
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT wordId FROM occurrences 
+            GROUP BY wordId 
+            HAVING COUNT(*) >= :minHits AND COUNT(*) <= :maxHits
+        )
+    """)
+    fun getWordsByHitsRangeCount(minHits: Int, maxHits: Int): Flow<Int>
+
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT wordId FROM occurrences 
+            GROUP BY wordId 
+            HAVING COUNT(*) >= :minHits
+        )
+    """)
+    fun getWordsAboveHitsCount(minHits: Int): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM words WHERE reviewPriority > 2")
+    fun getForgottenWordsCount(): Flow<Int>
+
+    @Query("""
+        SELECT 
+            b.author as author,
+            COUNT(DISTINCT o.wordId) as uniqueWordsCount,
+            COUNT(o.id) as totalOccurrencesCount
+        FROM occurrences o
+        JOIN reading_sessions rs ON o.sessionId = rs.id
+        JOIN chapters c ON rs.chapterId = c.id
+        JOIN books b ON c.bookId = b.id
+        GROUP BY b.author
+        ORDER BY uniqueWordsCount DESC
+    """)
+    fun getAuthorVocabularyStats(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.AuthorStatsEntity>>
 }

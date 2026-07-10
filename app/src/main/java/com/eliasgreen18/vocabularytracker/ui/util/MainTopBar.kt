@@ -2,13 +2,9 @@ package com.eliasgreen18.vocabularytracker.ui.util
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.eliasgreen18.vocabularytracker.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -16,7 +12,10 @@ fun MainTopBar(
     title: String,
     onNavigateToSettings: () -> Unit,
     onNavigateToNotifications: () -> Unit,
-    onBackupClick: () -> Unit
+    onBackupClick: () -> Unit,
+    onSyncClick: () -> Unit,
+    onExportCsvClick: () -> Unit,
+    onExportJsonClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -47,8 +46,38 @@ fun MainTopBar(
                         },
                         leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
                     )
+                    
+                    HorizontalDivider()
+
                     DropdownMenuItem(
-                        text = { Text("Create Backup") },
+                        text = { Text("Sync to Google Drive") },
+                        onClick = { 
+                            showMenu = false
+                            onSyncClick() 
+                        },
+                        leadingIcon = { Icon(Icons.Default.CloudSync, contentDescription = null) }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("Export to CSV") },
+                        onClick = { 
+                            showMenu = false
+                            onExportCsvClick() 
+                        },
+                        leadingIcon = { Icon(Icons.Default.TableChart, contentDescription = null) }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("Export to JSON") },
+                        onClick = { 
+                            showMenu = false
+                            onExportJsonClick() 
+                        },
+                        leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("Create .db Backup") },
                         onClick = { 
                             showMenu = false
                             onBackupClick() 

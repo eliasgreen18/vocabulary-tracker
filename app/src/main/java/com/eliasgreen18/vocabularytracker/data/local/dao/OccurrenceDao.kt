@@ -118,7 +118,8 @@ interface OccurrenceDao {
             b.language as bookLanguage,
             c.number as chapterNumber,
             c.title as chapterTitle,
-            o.sessionId as sessionId
+            o.sessionId as sessionId,
+            o.snippet as snippet
         FROM occurrences o
         JOIN reading_sessions rs ON o.sessionId = rs.id
         JOIN chapters c ON rs.chapterId = c.id
@@ -140,4 +141,54 @@ interface OccurrenceDao {
         )
     """)
     suspend fun deleteLatestOccurrenceInSession(wordId: Long, sessionId: Long)
+
+    @Query("""
+        SELECT 
+            b.id as bookId,
+            b.title as bookTitle,
+            COUNT(DISTINCT o.wordId) as uniqueWordsCount,
+            COUNT(o.id) as totalOccurrencesCount
+        FROM occurrences o
+        JOIN reading_sessions rs ON o.sessionId = rs.id
+        JOIN chapters c ON rs.chapterId = c.id
+        JOIN books b ON c.bookId = b.id
+        GROUP BY b.id
+        ORDER BY uniqueWordsCount DESC
+    """)
+    fun getBookContributions(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.BookContributionEntity>>
+
+    @Query("""
+        SELECT 
+            c.id as chapterId,
+            b.title as bookTitle,
+            c.number as chapterNumber,
+            COUNT(DISTINCT o.wordId) as uniqueWordsCount,
+            COUNT(o.id) as totalOccurrencesCount
+        FROM occurrences o
+        JOIN reading_sessions rs ON o.sessionId = rs.id
+        JOIN chapters c ON rs.chapterId = c.id
+        JOIN books b ON c.bookId = b.id
+        GROUP BY c.id
+        ORDER BY uniqueWordsCount DESC
+    """)
+    fun getChapterDifficulties(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.ChapterDifficultyEntity>>
+
+    @Query("""
+        SELECT date(createdAt / 1000, 'unixepoch', 'localtime') as date, COUNT(*) as count 
+        FROM occurrences 
+        GROUP BY date
+        ORDER BY date DESC
+    """)
+    fun getDailyActivity(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.DailyActivityEntity>>
+
+    @Query("""
+        SELECT 
+            w.text as wordText,
+            MIN(o.createdAt) as firstSeenAt
+        FROM words w
+        JOIN occurrences o ON w.id = o.wordId
+        GROUP BY w.id
+        ORDER BY firstSeenAt DESC
+    """)
+    fun getFirstEncounters(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.WordDiscoveryEntity>>
 }
