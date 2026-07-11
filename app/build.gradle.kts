@@ -86,6 +86,7 @@ dependencies {
     implementation(libs.google.play.services.auth)
     implementation(libs.google.http.client.android)
     implementation(libs.google.generative.ai)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
