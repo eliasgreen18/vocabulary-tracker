@@ -136,12 +136,25 @@ fun WordDetailScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = state.word.text,
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = state.word.text,
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            IconButton(onClick = { viewModel.speak(state.word.text) }) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.VolumeUp, 
+                                    contentDescription = "Speak",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             MasteryBadge(mastery = state.mastery)
@@ -293,7 +306,11 @@ fun WordDetailScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        JourneyTimeline(events = state.journey, dateTimeFormatter = dateTimeFormatter)
+                        JourneyTimeline(
+                            events = state.journey, 
+                            dateTimeFormatter = dateTimeFormatter,
+                            onSpeak = { viewModel.speak(it) }
+                        )
                     }
                 }
 
@@ -454,7 +471,7 @@ fun AddRelationshipDialog(
 }
 
 @Composable
-fun JourneyTimeline(events: List<JourneyEvent>, dateTimeFormatter: DateTimeFormatter) {
+fun JourneyTimeline(events: List<JourneyEvent>, dateTimeFormatter: DateTimeFormatter, onSpeak: (String) -> Unit) {
     if (events.isEmpty()) {
         Text(text = "The journey hasn't started yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
     } else {
@@ -463,7 +480,8 @@ fun JourneyTimeline(events: List<JourneyEvent>, dateTimeFormatter: DateTimeForma
                 JourneyEventItem(
                     event = event,
                     isLast = index == events.size - 1,
-                    formatter = dateTimeFormatter
+                    formatter = dateTimeFormatter,
+                    onSpeak = onSpeak
                 )
             }
         }
@@ -471,7 +489,7 @@ fun JourneyTimeline(events: List<JourneyEvent>, dateTimeFormatter: DateTimeForma
 }
 
 @Composable
-fun JourneyEventItem(event: JourneyEvent, isLast: Boolean, formatter: DateTimeFormatter) {
+fun JourneyEventItem(event: JourneyEvent, isLast: Boolean, formatter: DateTimeFormatter, onSpeak: (String) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp)) {
             val (icon, color) = when (event) {
@@ -521,12 +539,18 @@ fun JourneyEventItem(event: JourneyEvent, isLast: Boolean, formatter: DateTimeFo
             
             if (!snippet.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "\"$snippet\"",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "\"$snippet\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { onSpeak(snippet) }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Speak", modifier = Modifier.size(14.dp))
+                    }
+                }
             }
 
             Text(

@@ -5,14 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.data.util.ImportService
 import com.eliasgreen18.vocabularytracker.data.util.NotificationScheduler
+import com.eliasgreen18.vocabularytracker.domain.model.AppTheme
+import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
 import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
+import com.eliasgreen18.vocabularytracker.domain.repository.WordRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.BatchImportWordsUseCase
+import com.eliasgreen18.vocabularytracker.domain.usecase.RequestTranslationUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,7 +21,9 @@ class SettingsViewModel @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val notificationScheduler: NotificationScheduler,
     private val importService: ImportService,
-    private val batchImportWordsUseCase: BatchImportWordsUseCase
+    private val batchImportWordsUseCase: BatchImportWordsUseCase,
+    private val wordRepository: WordRepository,
+    private val requestTranslationUseCase: RequestTranslationUseCase
 ) : ViewModel() {
 
     val keepBackupHistory: StateFlow<Boolean> = preferencesRepository.getKeepBackupHistory()
@@ -73,6 +75,20 @@ class SettingsViewModel @Inject constructor(
             initialValue = false
         )
 
+    val autoSpeakEnabled: StateFlow<Boolean> = preferencesRepository.isAutoSpeakEnabled()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val appTheme: StateFlow<AppTheme> = preferencesRepository.getAppTheme()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = AppTheme.SYSTEM
+        )
+
     private val _importStatus = MutableStateFlow<String?>(null)
     val importStatus = _importStatus.asStateFlow()
 
@@ -115,6 +131,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setAutoSpeakEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setAutoSpeakEnabled(enabled)
+        }
+    }
+
+    fun setAppTheme(theme: AppTheme) {
+        viewModelScope.launch {
+            preferencesRepository.setAppTheme(theme)
+        }
+    }
+
     fun setGeminiApiKey(key: String?) {
         viewModelScope.launch {
             preferencesRepository.setGeminiApiKey(key)
@@ -154,5 +182,21 @@ class SettingsViewModel @Inject constructor(
             preferencesRepository.setGoogleAccountName(null)
             preferencesRepository.setAutoSyncEnabled(false)
         }
+    }
+
+    fun triggerMassTranslation() {
+        viewModelScope.launch {
+            _importStatus.value = "Enqueuing translations..."
+            wordRepository.getAllWords().first().forEach { word ->
+                if (word.translationStatus == TranslationStatus.NOT_REQUESTED || word.translationStatus == TranslationStatus.ERROR) {
+                    requestTranslationUseCase(word)
+                }
+            }
+            _importStatus.value = "Translation tasks added to queue."
+        }
+    }
+    
+    fun sendTestNotification() {
+        notificationScheduler.scheduleDailyNotificationIn(5) // 5 seconds
     }
 }

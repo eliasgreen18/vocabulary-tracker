@@ -7,6 +7,8 @@ data class WordWithCount(
     val globalCount: Int,
     val isFocusWord: Boolean = false,
     val translation: String? = null,
+    val ipa: String? = null,
+    val notes: String? = null,
     val translationStatus: TranslationStatus = TranslationStatus.NOT_REQUESTED
 ) {
     val mastery: WordMastery

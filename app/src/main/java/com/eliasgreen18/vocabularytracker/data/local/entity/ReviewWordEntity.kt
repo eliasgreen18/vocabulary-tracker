@@ -8,12 +8,13 @@ data class ReviewWordEntity(
     val lastReviewedAt: Long?,
     val reviewPriority: Int,
     val lastBookTitle: String?,
+    val lastBookLanguage: String?,
     val lastChapterNumber: String?,
     val lastChapterTitle: String?,
     val snippet: String?,
     val translation: String?,
     val ipa: String?,
-    val notes: String?, // New field
+    val notes: String?,
     // SRS Columns
     val currentIntervalDays: Int,
     val nextReviewAt: Long?

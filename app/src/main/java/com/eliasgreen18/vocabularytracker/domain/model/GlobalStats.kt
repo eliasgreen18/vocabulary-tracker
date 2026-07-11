@@ -7,7 +7,9 @@ data class GlobalStats(
     val learningWordsCount: Int,
     val learnedWordsCount: Int,
     val translatedWordsCount: Int,
-    val totalChaptersCount: Int, // New field
+    val totalChaptersCount: Int,
+    val completedBooksCount: Int,
+    val totalReadingTimeSeconds: Long,
     // SRS Stats
     val totalReviewsDone: Int,
     val successfulReviews: Int,
@@ -17,4 +19,11 @@ data class GlobalStats(
         get() = if (totalReviewAttempts > 0) {
             (successfulReviews * 100) / totalReviewAttempts
         } else 0
+        
+    val wordsPerHour: Int
+        get() {
+            if (totalReadingTimeSeconds < 60) return 0
+            val hours = totalReadingTimeSeconds.toDouble() / 3600.0
+            return (uniqueWordsCount.toDouble() / hours).toInt()
+        }
 }

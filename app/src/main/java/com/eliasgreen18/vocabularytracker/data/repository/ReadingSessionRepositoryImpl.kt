@@ -62,11 +62,24 @@ class ReadingSessionRepositoryImpl @Inject constructor(
         sessionDao.updateSession(session.toEntity())
     }
 
-    override suspend fun endSession(sessionId: Long) {
+    override suspend fun endSession(sessionId: Long, activeDurationSeconds: Long) {
         val sessionEntity = sessionDao.getSessionById(sessionId)
         sessionEntity?.let {
-            val updatedSession = it.copy(endedAt = Instant.now())
+            val updatedSession = it.copy(
+                endedAt = Instant.now(),
+                activeDurationSeconds = activeDurationSeconds
+            )
             sessionDao.updateSession(updatedSession)
+        }
+    }
+
+    override fun getTotalReadingTimeSeconds(): Flow<Long> {
+        return sessionDao.getTotalReadingTimeSeconds().map { it ?: 0L }
+    }
+
+    override fun getDailyReadingDurations(since: Instant): Flow<Map<java.time.LocalDate, Long>> {
+        return sessionDao.getDailyReadingDurations(since.toEpochMilli()).map { entities ->
+            entities.associate { java.time.LocalDate.parse(it.date) to it.totalSeconds }
         }
     }
 }

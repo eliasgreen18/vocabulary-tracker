@@ -1,8 +1,11 @@
 package com.eliasgreen18.vocabularytracker.ui.books
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eliasgreen18.vocabularytracker.data.util.FileStorageService
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.domain.model.BookStatus
 import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
@@ -23,6 +26,7 @@ class BookViewModel @Inject constructor(
     private val startReadingSessionUseCase: StartReadingSessionUseCase,
     private val getChapterByNumberUseCase: GetChapterByNumberUseCase,
     private val upsertChapterUseCase: UpsertChapterUseCase,
+    private val fileStorageService: FileStorageService,
     private val repository: BookRepository
 ) : ViewModel() {
 
@@ -33,13 +37,19 @@ class BookViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    fun addBook(title: String, author: String, language: String, genre: String? = null) {
+    fun addBook(title: String, author: String, language: String, genre: String? = null, coverUri: Uri? = null) {
         viewModelScope.launch {
+            val coverPath = coverUri?.let { 
+                fileStorageService.saveBookCover(it).getOrNull()
+            }
+            
             val newBook = Book(
                 title = title,
                 author = author,
                 language = language,
-                genre = genre
+                genre = genre,
+                coverPath = coverPath,
+                status = BookStatus.READING
             )
             addBookUseCase(newBook)
         }

@@ -13,9 +13,10 @@ import com.eliasgreen18.vocabularytracker.data.local.entity.*
         ReadingSessionEntity::class,
         WordEntity::class,
         OccurrenceEntity::class,
-        WordRelationshipEntity::class
+        WordRelationshipEntity::class,
+        HighlightEntity::class
     ],
-    version = 14,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -26,4 +27,5 @@ abstract class VocabularyDatabase : RoomDatabase() {
     abstract fun wordDao(): WordDao
     abstract fun occurrenceDao(): OccurrenceDao
     abstract fun relationshipDao(): RelationshipDao
+    abstract fun highlightDao(): HighlightDao
 }

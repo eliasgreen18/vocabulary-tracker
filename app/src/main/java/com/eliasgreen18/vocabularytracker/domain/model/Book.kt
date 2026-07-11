@@ -7,6 +7,11 @@ data class Book(
     val title: String,
     val author: String,
     val language: String,
-    val genre: String? = null, // New field
-    val lastOpenedAt: Instant? = null
+    val genre: String? = null,
+    val coverPath: String? = null,
+    val filePath: String? = null,
+    val status: BookStatus = BookStatus.READING,
+    val lastOpenedAt: Instant? = null,
+    val lastChapterIndex: Int = 0,
+    val lastScrollOffset: Int = 0
 )

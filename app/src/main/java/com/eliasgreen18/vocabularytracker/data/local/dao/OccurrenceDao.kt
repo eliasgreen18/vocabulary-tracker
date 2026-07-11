@@ -191,4 +191,17 @@ interface OccurrenceDao {
         ORDER BY firstSeenAt DESC
     """)
     fun getFirstEncounters(): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.WordDiscoveryEntity>>
+
+    @Query("""
+        SELECT 
+            rs.chapterId as chapterId,
+            COUNT(DISTINCT o.wordId) as uniqueWordsCount,
+            COUNT(DISTINCT CASE WHEN (SELECT COUNT(*) FROM occurrences o2 WHERE o2.wordId = o.wordId) >= 3 THEN o.wordId END) as learnedWordsCount
+        FROM occurrences o
+        JOIN reading_sessions rs ON o.sessionId = rs.id
+        JOIN chapters c ON rs.chapterId = c.id
+        WHERE c.bookId = :bookId
+        GROUP BY rs.chapterId
+    """)
+    fun getChapterMasteryByBook(bookId: Long): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.ChapterMasteryEntity>>
 }

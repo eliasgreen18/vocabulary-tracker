@@ -11,5 +11,7 @@ interface ReadingSessionRepository {
     suspend fun getSessionById(sessionId: Long): ReadingSession?
     suspend fun insertSession(session: ReadingSession): Long
     suspend fun updateSession(session: ReadingSession)
-    suspend fun endSession(sessionId: Long)
+    suspend fun endSession(sessionId: Long, activeDurationSeconds: Long)
+    fun getTotalReadingTimeSeconds(): Flow<Long>
+    fun getDailyReadingDurations(since: java.time.Instant): Flow<Map<java.time.LocalDate, Long>>
 }

@@ -25,6 +25,12 @@ class GetBookStatsUseCase @Inject constructor(
             BookStats(
                 bookId = bookId,
                 bookTitle = book.title,
+                bookAuthor = book.author,
+                bookLanguage = book.language,
+                bookGenre = book.genre,
+                bookCoverPath = book.coverPath,
+                bookFilePath = book.filePath,
+                bookStatus = book.status,
                 uniqueWordsCount = allWordsInBook.size,
                 totalOccurrencesCount = allWordsInBook.sumOf { it.globalCount },
                 learnedWordsCount = allWordsInBook.count { it.mastery == WordMastery.LEARNED },

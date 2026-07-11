@@ -2,7 +2,9 @@ package com.eliasgreen18.vocabularytracker.ui.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eliasgreen18.vocabularytracker.data.util.SpeechService
 import com.eliasgreen18.vocabularytracker.domain.model.ReviewWord
+import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetDueWordsUseCase
 import com.eliasgreen18.vocabularytracker.domain.usecase.UpdateSrsProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,7 +15,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ReviewViewModel @Inject constructor(
     getDueWordsUseCase: GetDueWordsUseCase,
-    private val updateSrsProgressUseCase: UpdateSrsProgressUseCase
+    private val updateSrsProgressUseCase: UpdateSrsProgressUseCase,
+    private val speechService: SpeechService,
+    private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _reviewWords = getDueWordsUseCase()
@@ -46,8 +50,18 @@ class ReviewViewModel @Inject constructor(
         initialValue = 0
     )
 
+    val isAutoSpeakEnabled: StateFlow<Boolean> = preferencesRepository.isAutoSpeakEnabled()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun reveal() {
         _isRevealed.value = true
+        if (isAutoSpeakEnabled.value) {
+            currentWord.value?.let { speak(it.wordText, it.lastBookLanguage) }
+        }
     }
 
     fun onRemembered() {
@@ -66,6 +80,10 @@ class ReviewViewModel @Inject constructor(
             provideFeedback(false, word.currentIntervalDays)
             nextWord()
         }
+    }
+
+    fun speak(text: String, lang: String? = null) {
+        speechService.speak(text, lang ?: "en")
     }
 
     private fun provideFeedback(remembered: Boolean, lastInterval: Int) {

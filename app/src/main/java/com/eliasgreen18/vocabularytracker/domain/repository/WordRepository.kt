@@ -23,8 +23,16 @@ interface WordRepository {
     fun getSessionWords(sessionId: Long): Flow<List<WordWithCount>>
     fun getChapterWords(chapterId: Long): Flow<List<WordWithCount>>
     fun getWordHistory(wordId: Long): Flow<List<WordOccurrenceDetail>>
-    fun searchWords(query: String): Flow<List<WordWithCount>>
+    fun searchWords(
+        query: String, 
+        bookId: Long? = null,
+        author: String? = null,
+        isFavorite: Boolean? = null,
+        minHits: Int? = null,
+        maxHits: Int? = null
+    ): Flow<List<WordWithCount>>
     fun getAllWordsWithCount(): Flow<List<WordWithCount>>
+    fun getAllWords(): Flow<List<Word>>
     fun getFocusWords(): Flow<List<WordWithCount>>
     suspend fun updateFocusStatus(wordId: Long, isFocus: Boolean)
     fun getTotalWordsCount(): Flow<Int>
@@ -59,7 +67,11 @@ interface WordRepository {
     fun getWordsAboveHitsCount(min: Int): Flow<Int>
     fun getForgottenWordsCount(): Flow<Int>
     fun getAuthorStats(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.AuthorStats>>
+    fun getAllAuthors(): Flow<List<String>>
     fun getWordDiscoveries(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.WordDiscovery>>
+    fun getChapterMastery(bookId: Long): Flow<Map<Long, com.eliasgreen18.vocabularytracker.domain.model.ChapterMastery>>
+    fun getTotalMasteredChaptersCount(): Flow<Int>
+    suspend fun getRandomWord(): com.eliasgreen18.vocabularytracker.domain.model.Word?
     
     // Relationships
     suspend fun addRelationship(wordId: Long, relatedId: Long, type: com.eliasgreen18.vocabularytracker.domain.model.RelationshipType)

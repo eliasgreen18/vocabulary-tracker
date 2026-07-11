@@ -27,6 +27,8 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GOOGLE_ACCOUNT_NAME = "google_account_name"
         private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
+        private const val KEY_AUTO_SPEAK_ENABLED = "auto_speak_enabled"
+        private const val KEY_APP_THEME = "app_theme"
     }
 
     private fun <T> preferenceFlow(key: String, defaultValue: T): Flow<T> = callbackFlow {
@@ -125,5 +127,28 @@ class UserPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun setAutoSyncEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_SYNC_ENABLED, enabled).apply()
+    }
+
+    override fun isAutoSpeakEnabled(): Flow<Boolean> = preferenceFlow(KEY_AUTO_SPEAK_ENABLED, false)
+
+    override suspend fun setAutoSpeakEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_SPEAK_ENABLED, enabled).apply()
+    }
+
+    override fun getAppTheme(): Flow<com.eliasgreen18.vocabularytracker.domain.model.AppTheme> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == KEY_APP_THEME) {
+                val themeName = p.getString(key, com.eliasgreen18.vocabularytracker.domain.model.AppTheme.SYSTEM.name)
+                trySend(com.eliasgreen18.vocabularytracker.domain.model.AppTheme.valueOf(themeName!!))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        val current = prefs.getString(KEY_APP_THEME, com.eliasgreen18.vocabularytracker.domain.model.AppTheme.SYSTEM.name)
+        trySend(com.eliasgreen18.vocabularytracker.domain.model.AppTheme.valueOf(current!!))
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override suspend fun setAppTheme(theme: com.eliasgreen18.vocabularytracker.domain.model.AppTheme) {
+        prefs.edit().putString(KEY_APP_THEME, theme.name).apply()
     }
 }

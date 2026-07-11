@@ -1,5 +1,8 @@
 package com.eliasgreen18.vocabularytracker.ui.books
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,12 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
 import kotlin.random.Random
@@ -108,8 +114,8 @@ fun BooksScreen(
         if (showAddBookDialog) {
             AddBookDialog(
                 onDismiss = { showAddBookDialog = false },
-                onConfirm = { title, author, language, genre ->
-                    viewModel.addBook(title, author, language, genre)
+                onConfirm = { title, author, language, genre, coverUri ->
+                    viewModel.addBook(title, author, language, genre, coverUri)
                     showAddBookDialog = false
                 }
             )
@@ -119,7 +125,6 @@ fun BooksScreen(
 
 @Composable
 fun BookCard(book: BookWithStats, onClick: () -> Unit) {
-    // Generate a consistent color based on title hash
     val seed = book.title.hashCode().toLong()
     val random = Random(seed)
     val hue = random.nextInt(360).toFloat()
@@ -134,31 +139,50 @@ fun BookCard(book: BookWithStats, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // Book Cover Placeholder
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(180.dp)
                     .background(
                         Brush.verticalGradient(
                             listOf(coverColor, darkCoverColor)
                         )
-                    )
-                    .padding(12.dp),
+                    ),
                 contentAlignment = Alignment.BottomStart
             ) {
-                Text(
-                    text = book.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (book.coverPath != null) {
+                    AsyncImage(
+                        model = book.coverPath,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    // Gradient overlay to ensure title legibility if needed (though title is outside now)
+                }
+                
+                // Overlay title if no cover, or just always show it at the bottom?
+                // Let's show title in a dedicated area for better consistency
+                if (book.coverPath == null) {
+                    Text(
+                        text = book.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
 
-            // Book Details
             Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     text = book.author.ifBlank { "Unknown Author" },
                     style = MaterialTheme.typography.labelSmall,
@@ -217,12 +241,19 @@ fun BookStatBadge(
 @Composable
 fun AddBookDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String?) -> Unit
+    onConfirm: (String, String, String, String?, Uri?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var author by remember { mutableStateOf("") }
     var language by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -256,11 +287,22 @@ fun AddBookDialog(
                     label = { Text("Genre (optional)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = { imagePickerLauncher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (selectedImageUri == null) "Pick Cover Image" else "Image Selected ✓")
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(title, author, language, genre.ifBlank { null }) },
+                onClick = { onConfirm(title, author, language, genre.ifBlank { null }, selectedImageUri) },
                 enabled = title.isNotBlank() && language.isNotBlank()
             ) {
                 Text("Add")

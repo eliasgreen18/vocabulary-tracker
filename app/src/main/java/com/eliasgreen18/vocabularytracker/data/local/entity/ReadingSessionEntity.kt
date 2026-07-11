@@ -21,19 +21,22 @@ data class ReadingSessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val chapterId: Long,
     val startedAt: Instant,
-    val endedAt: Instant?
+    val endedAt: Instant?,
+    val activeDurationSeconds: Long = 0
 )
 
 fun ReadingSessionEntity.toDomain() = ReadingSession(
     id = id,
     chapterId = chapterId,
     startedAt = startedAt,
-    endedAt = endedAt
+    endedAt = endedAt,
+    activeDurationSeconds = activeDurationSeconds
 )
 
 fun ReadingSession.toEntity() = ReadingSessionEntity(
     id = id,
     chapterId = chapterId,
     startedAt = startedAt,
-    endedAt = endedAt
+    endedAt = endedAt,
+    activeDurationSeconds = activeDurationSeconds
 )

@@ -23,4 +23,10 @@ interface UserPreferencesRepository {
 
     fun isAutoSyncEnabled(): Flow<Boolean>
     suspend fun setAutoSyncEnabled(enabled: Boolean)
+
+    fun isAutoSpeakEnabled(): Flow<Boolean>
+    suspend fun setAutoSpeakEnabled(enabled: Boolean)
+
+    fun getAppTheme(): Flow<com.eliasgreen18.vocabularytracker.domain.model.AppTheme>
+    suspend fun setAppTheme(theme: com.eliasgreen18.vocabularytracker.domain.model.AppTheme)
 }

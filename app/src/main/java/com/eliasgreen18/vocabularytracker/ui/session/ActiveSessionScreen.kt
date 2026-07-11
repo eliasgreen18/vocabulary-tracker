@@ -40,11 +40,15 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ActiveSessionScreen(
     onNavigateBack: () -> Unit,
     onNavigateToWordDetail: (Long) -> Unit,
+    onNavigateToScanner: () -> Unit,
     viewModel: SessionViewModel = hiltViewModel()
 ) {
     val sessionInfo by viewModel.sessionInfo.collectAsState()
     val sessionWords by viewModel.sessionWords.collectAsState()
     val autoScrollEnabled by viewModel.autoScrollEnabled.collectAsState()
+    val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
+    val isTimerRunning by viewModel.isTimerRunning.collectAsState()
+
     val listState = rememberLazyListState()
 
     var showEditDialog by remember { mutableStateOf(false) }
@@ -53,6 +57,18 @@ fun ActiveSessionScreen(
     var showSnippetField by remember { mutableStateOf(false) }
     
     val focusRequester = remember { FocusRequester() }
+
+    // Listen for OCR results if coming back from scanner
+    val savedStateHandle = viewModel.savedStateHandle
+    val ocrResult = savedStateHandle.getStateFlow<String?>("scanned_text", null).collectAsState()
+    
+    LaunchedEffect(ocrResult.value) {
+        ocrResult.value?.let { text ->
+            snippetText = text
+            showSnippetField = true
+            savedStateHandle["scanned_text"] = null // consume
+        }
+    }
 
     // Auto-scroll logic: pin to top instantly if enabled
     LaunchedEffect(sessionWords.size) {
@@ -69,28 +85,37 @@ fun ActiveSessionScreen(
             TopAppBar(
                 title = { 
                     sessionInfo?.let { info ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = info.book?.title ?: "Reading", 
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                shape = CircleShape,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = info.chapter.number,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = info.book?.title ?: "Reading", 
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = info.chapter.number,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
+                            // Timer Display
+                            Text(
+                                text = formatElapsed(elapsedSeconds),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isTimerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 },
@@ -100,6 +125,13 @@ fun ActiveSessionScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.toggleTimer() }) {
+                        Icon(
+                            imageVector = if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isTimerRunning) "Pause" else "Resume",
+                            tint = if (isTimerRunning) MaterialTheme.colorScheme.primary else Color(0xFF4CAF50)
+                        )
+                    }
                     IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Chapter", modifier = Modifier.size(20.dp))
                     }
@@ -173,17 +205,25 @@ fun ActiveSessionScreen(
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut()
                 ) {
-                    OutlinedTextField(
-                        value = snippetText,
-                        onValueChange = { snippetText = it },
-                        placeholder = { Text("Enter context sentence (optional)...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        maxLines = 3,
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        shape = MaterialTheme.shapes.medium
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = snippetText,
+                            onValueChange = { snippetText = it },
+                            placeholder = { Text("Enter context sentence (optional)...") },
+                            modifier = Modifier.weight(1f),
+                            maxLines = 3,
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            shape = MaterialTheme.shapes.medium,
+                            trailingIcon = {
+                                IconButton(onClick = onNavigateToScanner) {
+                                    Icon(Icons.Default.PhotoCamera, contentDescription = "Scan", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
@@ -241,6 +281,14 @@ fun ActiveSessionScreen(
     }
 }
 
+private fun formatElapsed(seconds: Long): String {
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    return if (h > 0) String.format("%d:%02d:%02d", h, m, s)
+    else String.format("%02d:%02d", m, s)
+}
+
 @Composable
 fun FocusWordItem(
     word: WordWithCount, 
@@ -262,13 +310,24 @@ fun FocusWordItem(
             )
         },
         supportingContent = {
-            if (word.translation != null && word.translationStatus == TranslationStatus.DONE) {
-                Text(
-                    text = word.translation!!,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+            when (word.translationStatus) {
+                TranslationStatus.LOADING -> {
+                    LinearProgressIndicator(
+                        modifier = Modifier.width(60.dp).height(2.dp).padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                TranslationStatus.DONE -> {
+                    if (word.translation != null) {
+                        Text(
+                            text = word.translation!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+                else -> { /* Show nothing or error */ }
             }
         },
         trailingContent = {

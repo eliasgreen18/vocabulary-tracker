@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
@@ -103,16 +104,29 @@ fun ReviewScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Word Text (Always Visible)
-                        Text(
-                            text = word.wordText,
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .clickable { onNavigateToWordDetail(word.wordId) }
-                        )
+                        // Word Text + Speaker
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = word.wordText,
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .clickable { onNavigateToWordDetail(word.wordId) }
+                            )
+                            IconButton(onClick = { viewModel.speak(word.wordText, word.lastBookLanguage) }) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.VolumeUp, 
+                                    contentDescription = "Speak",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
                         
                         Text(
                             text = "Tap word for full history",
@@ -158,13 +172,19 @@ fun ReviewScreen(
                                 // REVEALED STATE
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     // Translation
-                                    Text(
-                                        text = word.translation ?: "No translation loaded",
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold,
-                                        textAlign = TextAlign.Center
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = word.translation ?: "No translation loaded",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.SemiBold,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        IconButton(onClick = { viewModel.speak(word.wordText, word.lastBookLanguage) }) {
+                                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Speak", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
                                     
                                     // IPA
                                     if (!word.ipa.isNullOrBlank()) {

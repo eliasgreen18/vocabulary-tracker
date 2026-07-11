@@ -3,6 +3,7 @@ package com.eliasgreen18.vocabularytracker.ui.words
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eliasgreen18.vocabularytracker.data.util.SpeechService
 import com.eliasgreen18.vocabularytracker.domain.model.RelationshipType
 import com.eliasgreen18.vocabularytracker.domain.model.WordDetailUiState
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
@@ -24,7 +25,8 @@ class WordDetailViewModel @Inject constructor(
     private val addWordRelationshipUseCase: AddWordRelationshipUseCase,
     private val deleteWordRelationshipUseCase: DeleteWordRelationshipUseCase,
     private val searchWordsUseCase: SearchWordsUseCase,
-    private val getAiInsightsUseCase: GetAiInsightsUseCase
+    private val getAiInsightsUseCase: GetAiInsightsUseCase,
+    private val speechService: SpeechService
 ) : ViewModel() {
 
     private val wordId: Long = checkNotNull(savedStateHandle["wordId"])
@@ -131,5 +133,11 @@ class WordDetailViewModel @Inject constructor(
             )
             _isAiLoading.value = false
         }
+    }
+
+    fun speak(text: String) {
+        // Find language from book if possible, otherwise default to "en"
+        val lang = uiState.value?.mainLanguage ?: "en"
+        speechService.speak(text, lang)
     }
 }

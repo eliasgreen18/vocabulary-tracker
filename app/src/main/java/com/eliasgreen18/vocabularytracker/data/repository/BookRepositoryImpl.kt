@@ -4,6 +4,7 @@ import com.eliasgreen18.vocabularytracker.data.local.dao.BookDao
 import com.eliasgreen18.vocabularytracker.data.local.entity.toDomain
 import com.eliasgreen18.vocabularytracker.data.local.entity.toEntity
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.domain.model.BookStatus
 import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import kotlinx.coroutines.flow.Flow
@@ -29,8 +30,12 @@ class BookRepositoryImpl @Inject constructor(
                     author = it.author,
                     language = it.language,
                     genre = it.genre,
+                    coverPath = it.coverPath,
+                    filePath = it.filePath,
+                    status = try { BookStatus.valueOf(it.status) } catch (e: Exception) { BookStatus.READING },
                     wordCount = it.wordCount,
-                    chapterCount = it.chapterCount
+                    chapterCount = it.chapterCount,
+                    lastOpenedAt = it.lastOpenedAt
                 )
             }
         }
@@ -44,7 +49,15 @@ class BookRepositoryImpl @Inject constructor(
         return bookDao.insertBook(book.toEntity())
     }
 
+    override suspend fun updateBook(book: Book) {
+        bookDao.updateBook(book.toEntity())
+    }
+
     override suspend fun updateLastOpened(bookId: Long) {
         bookDao.updateLastOpened(bookId, Instant.now())
+    }
+
+    override suspend fun updateBookStatus(bookId: Long, status: BookStatus) {
+        bookDao.updateBookStatus(bookId, status.name)
     }
 }

@@ -7,5 +7,7 @@ data class WordWithCountEntity(
     val globalCount: Int,
     val isFocusWord: Boolean,
     val translation: String? = null,
+    val ipa: String? = null,
+    val notes: String? = null,
     val translationStatus: String = "NOT_REQUESTED"
 )

@@ -8,6 +8,7 @@ data class ReviewWord(
     val lastReviewedAt: Long?,
     val reviewPriority: Int,
     val lastContext: String,
+    val lastBookLanguage: String?,
     val lastSnippet: String? = null,
     val translation: String?,
     val ipa: String?,

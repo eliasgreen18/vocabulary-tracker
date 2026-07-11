@@ -1,6 +1,7 @@
 package com.eliasgreen18.vocabularytracker.data.remote.drive
 
 import android.content.Context
+import android.util.Log
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
@@ -22,7 +23,7 @@ class GoogleDriveService @Inject constructor(
 
     fun setupService(accountName: String) {
         val credential = GoogleAccountCredential.usingOAuth2(
-            context, listOf(DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_FILE)
+            context, listOf(DriveScopes.DRIVE_FILE)
         ).setSelectedAccountName(accountName)
 
         driveService = Drive.Builder(
@@ -36,32 +37,27 @@ class GoogleDriveService @Inject constructor(
         val service = driveService ?: return@withContext Result.failure(Exception("Drive service not initialized"))
         
         try {
-            // 1. Find ALL existing files with this name across ALL spaces (including Trash)
-            // to ensure we don't have conflicts that lead to duplication
-            val query = "name = 'vocabulary_latest.db' and trashed = false"
+            Log.d("GoogleDriveService", "Starting upload to Google Drive...")
+            
             val result = service.files().list()
-                .setSpaces("appDataFolder") // AppData is hidden, best for backups
-                .setQ(query)
+                .setQ("name = 'vocabulary_latest.db' and trashed = false")
                 .setFields("files(id, name)")
                 .execute()
             
             val existingFiles = result.files
 
-            // 2. Cleanup ANY existing instance to ensure a truly fresh replacement
             if (!existingFiles.isNullOrEmpty()) {
                 for (file in existingFiles) {
                     try {
                         service.files().delete(file.id).execute()
                     } catch (e: Exception) {
-                        // Cleanup is best-effort
+                        Log.w("GoogleDriveService", "Could not delete old file: ${e.message}")
                     }
                 }
             }
 
-            // 3. Create fresh file in appDataFolder
             val fileMetadata = File().apply {
                 name = "vocabulary_latest.db"
-                parents = listOf("appDataFolder")
             }
             val mediaContent = FileContent("application/octet-stream", dbFile)
 
@@ -69,9 +65,14 @@ class GoogleDriveService @Inject constructor(
                 .setFields("id")
                 .execute()
 
+            Log.d("GoogleDriveService", "Upload successful!")
             Result.success(newFile.id)
+        } catch (e: com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException) {
+            Result.failure(Exception("Google needs additional permission. Please disconnect and reconnect in Settings."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Log.e("GoogleDriveService", "Upload failed", e)
+            val detailedError = e.message ?: e.toString()
+            Result.failure(Exception(detailedError))
         }
     }
 }

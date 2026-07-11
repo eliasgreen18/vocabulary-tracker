@@ -3,6 +3,7 @@ package com.eliasgreen18.vocabularytracker.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.eliasgreen18.vocabularytracker.domain.model.Book
+import com.eliasgreen18.vocabularytracker.domain.model.BookStatus
 import java.time.Instant
 
 @Entity(tableName = "books")
@@ -11,8 +12,13 @@ data class BookEntity(
     val title: String,
     val author: String,
     val language: String,
-    val genre: String? = null, // New column
-    val lastOpenedAt: Instant? = null
+    val genre: String? = null,
+    val coverPath: String? = null,
+    val filePath: String? = null,
+    val status: String = BookStatus.READING.name,
+    val lastOpenedAt: Instant? = null,
+    val lastChapterIndex: Int = 0,
+    val lastScrollOffset: Int = 0
 )
 
 fun BookEntity.toDomain() = Book(
@@ -21,7 +27,12 @@ fun BookEntity.toDomain() = Book(
     author = author,
     language = language,
     genre = genre,
-    lastOpenedAt = lastOpenedAt
+    coverPath = coverPath,
+    filePath = filePath,
+    status = try { BookStatus.valueOf(status) } catch (e: Exception) { BookStatus.READING },
+    lastOpenedAt = lastOpenedAt,
+    lastChapterIndex = lastChapterIndex,
+    lastScrollOffset = lastScrollOffset
 )
 
 fun Book.toEntity() = BookEntity(
@@ -30,5 +41,10 @@ fun Book.toEntity() = BookEntity(
     author = author,
     language = language,
     genre = genre,
-    lastOpenedAt = lastOpenedAt
+    coverPath = coverPath,
+    filePath = filePath,
+    status = status.name,
+    lastOpenedAt = lastOpenedAt,
+    lastChapterIndex = lastChapterIndex,
+    lastScrollOffset = lastScrollOffset
 )

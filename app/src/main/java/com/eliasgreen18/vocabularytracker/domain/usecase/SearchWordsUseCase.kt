@@ -8,7 +8,14 @@ import javax.inject.Inject
 class SearchWordsUseCase @Inject constructor(
     private val repository: WordRepository
 ) {
-    operator fun invoke(query: String): Flow<List<WordWithCount>> {
-        return repository.searchWords(query)
+    operator fun invoke(
+        query: String, 
+        bookId: Long? = null,
+        author: String? = null,
+        isFavorite: Boolean? = null,
+        minHits: Int? = null,
+        maxHits: Int? = null
+    ): Flow<List<WordWithCount>> {
+        return repository.searchWords(query, bookId, author, isFavorite, minHits, maxHits)
     }
 }

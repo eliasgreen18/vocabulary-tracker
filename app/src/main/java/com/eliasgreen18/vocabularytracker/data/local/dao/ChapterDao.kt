@@ -21,6 +21,12 @@ interface ChapterDao {
     @Update
     suspend fun updateChapter(chapter: ChapterEntity)
 
+    @Delete
+    suspend fun deleteChapter(chapter: ChapterEntity)
+
+    @Query("DELETE FROM chapters WHERE id = :chapterId")
+    suspend fun deleteChapterById(chapterId: Long)
+
     @Query("SELECT COUNT(*) FROM chapters")
     fun getTotalChaptersCount(): Flow<Int>
 }

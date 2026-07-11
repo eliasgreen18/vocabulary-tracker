@@ -2,6 +2,7 @@ package com.eliasgreen18.vocabularytracker.navigation
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object Stats : Screen("stats")
     object Books : Screen("books")
     object BookDetail : Screen("book/{bookId}") {
         fun createRoute(bookId: Long) = "book/$bookId"
@@ -22,4 +23,14 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object GlobalTimeline : Screen("global_timeline")
     object ReadingProfile : Screen("reading_profile")
+    object BookCompletion : Screen("book_completion/{bookId}") {
+        fun createRoute(bookId: Long) = "book_completion/$bookId"
+    }
+    object CameraScanner : Screen("camera_scanner")
+    object PdfReader : Screen("pdf_reader/{bookId}") {
+        fun createRoute(bookId: Long) = "pdf_reader/$bookId"
+    }
+    object EpubReader : Screen("epub_reader/{bookId}") {
+        fun createRoute(bookId: Long) = "epub_reader/$bookId"
+    }
 }

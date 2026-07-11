@@ -6,7 +6,7 @@ import javax.inject.Inject
 class EndReadingSessionUseCase @Inject constructor(
     private val repository: ReadingSessionRepository
 ) {
-    suspend operator fun invoke(sessionId: Long) {
-        repository.endSession(sessionId)
+    suspend operator fun invoke(sessionId: Long, activeDurationSeconds: Long) {
+        repository.endSession(sessionId, activeDurationSeconds)
     }
 }

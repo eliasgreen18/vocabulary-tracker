@@ -35,6 +35,10 @@ class ChapterRepositoryImpl @Inject constructor(
         chapterDao.updateChapter(chapter.toEntity())
     }
 
+    override suspend fun deleteChapter(chapterId: Long) {
+        chapterDao.deleteChapterById(chapterId)
+    }
+
     override fun getTotalChaptersCount(): Flow<Int> {
         return chapterDao.getTotalChaptersCount()
     }

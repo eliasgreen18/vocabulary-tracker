@@ -8,5 +8,7 @@ interface BookRepository {
     fun getAllBooksWithStats(): Flow<List<com.eliasgreen18.vocabularytracker.domain.model.BookWithStats>>
     fun getBookById(id: Long): Flow<Book?>
     suspend fun insertBook(book: Book): Long
+    suspend fun updateBook(book: Book)
     suspend fun updateLastOpened(bookId: Long)
+    suspend fun updateBookStatus(bookId: Long, status: com.eliasgreen18.vocabularytracker.domain.model.BookStatus)
 }

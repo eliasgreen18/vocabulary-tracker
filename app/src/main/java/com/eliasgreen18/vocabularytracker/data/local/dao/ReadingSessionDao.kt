@@ -38,4 +38,16 @@ interface ReadingSessionDao {
 
     @Update
     suspend fun updateSession(session: ReadingSessionEntity)
+
+    @Query("SELECT SUM(activeDurationSeconds) FROM reading_sessions")
+    fun getTotalReadingTimeSeconds(): Flow<Long?>
+
+    @Query("""
+        SELECT date(startedAt / 1000, 'unixepoch', 'localtime') as date, SUM(activeDurationSeconds) as totalSeconds
+        FROM reading_sessions
+        WHERE startedAt >= :since
+        GROUP BY date
+        ORDER BY date ASC
+    """)
+    fun getDailyReadingDurations(since: Long): Flow<List<com.eliasgreen18.vocabularytracker.data.local.entity.DailyDurationEntity>>
 }

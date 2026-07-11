@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.eliasgreen18.vocabularytracker.data.local.dictionary.DictionaryInitializer
+import com.eliasgreen18.vocabularytracker.data.util.SpeechService
 import com.eliasgreen18.vocabularytracker.domain.usecase.ProcessPendingTranslationsUseCase
 import com.eliasgreen18.vocabularytracker.ui.MainContainer
 import com.eliasgreen18.vocabularytracker.ui.theme.VocabularyTrackerTheme
@@ -18,6 +19,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var dictionaryInitializer: DictionaryInitializer
+
+    @Inject
+    lateinit var speechService: SpeechService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,5 +43,10 @@ class MainActivity : ComponentActivity() {
                 MainContainer()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speechService.shutdown()
     }
 }

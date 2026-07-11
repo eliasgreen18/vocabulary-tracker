@@ -10,13 +10,15 @@ import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
 import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SessionViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    val savedStateHandle: SavedStateHandle,
     getSessionWithBookUseCase: GetSessionWithBookUseCase,
     private val endReadingSessionUseCase: EndReadingSessionUseCase,
     private val upsertChapterUseCase: UpsertChapterUseCase,
@@ -81,6 +83,35 @@ class SessionViewModel @Inject constructor(
         initialValue = null
     )
 
+    // Timer Logic
+    private val _elapsedSeconds = MutableStateFlow(0L)
+    val elapsedSeconds = _elapsedSeconds.asStateFlow()
+    
+    private val _isTimerRunning = MutableStateFlow(true)
+    val isTimerRunning = _isTimerRunning.asStateFlow()
+    
+    private var timerJob: Job? = null
+
+    init {
+        startTimer()
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                if (_isTimerRunning.value) {
+                    _elapsedSeconds.value++
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    fun toggleTimer() {
+        _isTimerRunning.value = !_isTimerRunning.value
+    }
+
     private var lastRecordedWord: String? = null
     private var lastRecordedTimestamp: Long = 0
 
@@ -138,7 +169,7 @@ class SessionViewModel @Inject constructor(
 
     fun endSession(onSessionEnded: () -> Unit) {
         viewModelScope.launch {
-            endReadingSessionUseCase(sessionId)
+            endReadingSessionUseCase(sessionId, _elapsedSeconds.value)
             onSessionEnded()
         }
     }

@@ -36,6 +36,8 @@ interface WordDao {
             (SELECT COUNT(*) FROM occurrences o WHERE o.wordId = w.id) as globalCount,
             w.isFocusWord as isFocusWord,
             w.translation as translation,
+            w.ipa as ipa,
+            w.notes as notes,
             w.translationStatus as translationStatus
         FROM words w
         WHERE w.isFocusWord = 1
@@ -48,15 +50,37 @@ interface WordDao {
             w.id as wordId,
             w.text as wordText,
             0 as sessionCount,
-            (SELECT COUNT(*) FROM occurrences o WHERE o.wordId = w.id) as globalCount,
+            (SELECT COUNT(*) FROM occurrences o2 WHERE o2.wordId = w.id) as globalCount,
             w.isFocusWord as isFocusWord,
             w.translation as translation,
+            w.ipa as ipa,
+            w.notes as notes,
             w.translationStatus as translationStatus
         FROM words w
-        WHERE w.text LIKE '%' || :query || '%'
+        LEFT JOIN occurrences o ON w.id = o.wordId
+        LEFT JOIN reading_sessions rs ON o.sessionId = rs.id
+        LEFT JOIN chapters c ON rs.chapterId = c.id
+        LEFT JOIN books b ON c.bookId = b.id
+        WHERE (w.text LIKE '%' || :query || '%' OR w.translation LIKE '%' || :query || '%')
+        AND (:bookId IS NULL OR c.bookId = :bookId)
+        AND (:author IS NULL OR b.author = :author)
+        AND (:isFavorite IS NULL OR w.isFocusWord = :isFavorite)
+        GROUP BY w.id
+        HAVING (:minHits IS NULL OR globalCount >= :minHits)
+        AND (:maxHits IS NULL OR globalCount <= :maxHits)
         ORDER BY globalCount DESC, w.text ASC
     """)
-    fun searchWordsWithCount(query: String): Flow<List<WordWithCountEntity>>
+    fun searchWordsWithCount(
+        query: String, 
+        bookId: Long? = null,
+        author: String? = null,
+        isFavorite: Boolean? = null,
+        minHits: Int? = null,
+        maxHits: Int? = null
+    ): Flow<List<WordWithCountEntity>>
+
+    @Query("SELECT DISTINCT author FROM books WHERE author IS NOT NULL AND author != ''")
+    fun getAllAuthors(): Flow<List<String>>
 
     @Query("SELECT * FROM words WHERE text LIKE '%' || :query || '%'")
     fun searchWords(query: String): Flow<List<WordEntity>>
@@ -69,6 +93,8 @@ interface WordDao {
             (SELECT COUNT(*) FROM occurrences o WHERE o.wordId = w.id) as globalCount,
             w.isFocusWord as isFocusWord,
             w.translation as translation,
+            w.ipa as ipa,
+            w.notes as notes,
             w.translationStatus as translationStatus
         FROM words w
         ORDER BY globalCount DESC, w.text ASC
@@ -132,6 +158,7 @@ interface WordDao {
             w.lastReviewedAt as lastReviewedAt,
             w.reviewPriority as reviewPriority,
             b.title as lastBookTitle,
+            b.language as lastBookLanguage,
             c.number as lastChapterNumber,
             c.title as lastChapterTitle,
             last_o.snippet as snippet,
@@ -184,6 +211,21 @@ interface WordDao {
 
     @Query("SELECT COUNT(*) FROM words WHERE reviewPriority > 2")
     fun getForgottenWordsCount(): Flow<Int>
+
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT rs.chapterId
+            FROM occurrences o
+            JOIN reading_sessions rs ON o.sessionId = rs.id
+            GROUP BY rs.chapterId
+            HAVING COUNT(DISTINCT o.wordId) > 0 
+            AND COUNT(DISTINCT CASE WHEN (SELECT COUNT(*) FROM occurrences o2 WHERE o2.wordId = o.wordId) >= 3 THEN o.wordId END) = COUNT(DISTINCT o.wordId)
+        )
+    """)
+    fun getTotalMasteredChaptersCount(): Flow<Int>
+
+    @Query("SELECT * FROM words ORDER BY RANDOM() LIMIT 1")
+    suspend fun getRandomWord(): WordEntity?
 
     @Query("""
         SELECT 

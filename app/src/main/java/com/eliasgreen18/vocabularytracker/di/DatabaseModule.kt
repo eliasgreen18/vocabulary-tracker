@@ -210,6 +210,53 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE books ADD COLUMN coverPath TEXT")
+            db.execSQL("ALTER TABLE books ADD COLUMN status TEXT NOT NULL DEFAULT 'READING'")
+        }
+    }
+
+    private val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE reading_sessions ADD COLUMN activeDurationSeconds INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    private val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE books ADD COLUMN filePath TEXT")
+        }
+    }
+
+    private val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `highlights` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                    `bookId` INTEGER NOT NULL, 
+                    `chapterIndex` INTEGER NOT NULL, 
+                    `startOffset` INTEGER NOT NULL, 
+                    `endOffset` INTEGER NOT NULL, 
+                    `colorHex` TEXT NOT NULL, 
+                    `text` TEXT NOT NULL, 
+                    `createdAt` INTEGER NOT NULL, 
+                    FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_highlights_bookId` ON `highlights` (`bookId`)")
+        }
+    }
+
+    private val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE books ADD COLUMN lastChapterIndex INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE books ADD COLUMN lastScrollOffset INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocabularyDatabase {
@@ -218,7 +265,7 @@ object DatabaseModule {
             VocabularyDatabase::class.java,
             "vocabulary_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
         .fallbackToDestructiveMigration()
         .build()
     }
@@ -240,4 +287,7 @@ object DatabaseModule {
 
     @Provides
     fun provideRelationshipDao(database: VocabularyDatabase) = database.relationshipDao()
+
+    @Provides
+    fun provideHighlightDao(database: VocabularyDatabase) = database.highlightDao()
 }

@@ -1,7 +1,9 @@
 package com.eliasgreen18.vocabularytracker.ui.stats
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -9,9 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eliasgreen18.vocabularytracker.domain.model.GlobalStats
 import com.eliasgreen18.vocabularytracker.domain.model.StreakInfo
@@ -36,6 +40,7 @@ fun StatsScreen(
     val analytics by viewModel.analyticsState.collectAsState()
     val heatmap by viewModel.heatmapState.collectAsState()
     val mastery by viewModel.masteryState.collectAsState()
+    val weeklyStats by viewModel.weeklyStats.collectAsState()
 
     Scaffold(
         topBar = {
@@ -67,6 +72,12 @@ fun StatsScreen(
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
+                }
+
+                weeklyStats?.let { data ->
+                    item {
+                        WeeklyFocusCard(data)
+                    }
                 }
 
                 item {
@@ -199,6 +210,63 @@ fun StatsScreen(
                 }
                 
                 item { Spacer(modifier = Modifier.height(80.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+fun WeeklyFocusCard(stats: com.eliasgreen18.vocabularytracker.domain.usecase.WeeklyReadingStats) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(text = "WEEKLY FOCUS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(text = "${stats.totalMinutesThisWeek} / ${stats.weeklyGoalMinutes} min", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                }
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                    CircularProgressIndicator(
+                        progress = { stats.completionPercentage / 100f },
+                        strokeWidth = 6.dp,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(text = "${stats.completionPercentage}%", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Minimalist Bar Chart for the week
+            Row(
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                val last7Days = (0..6).map { java.time.LocalDate.now().minusDays(it.toLong()) }.reversed()
+                last7Days.forEach { date ->
+                    val mins = stats.dailyMinutes[date] ?: 0
+                    val heightFactor = if (stats.weeklyGoalMinutes > 0) (mins.toFloat() / (stats.weeklyGoalMinutes / 7f)).coerceAtMost(1f) else 0f
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .width(12.dp)
+                                .fillMaxHeight(0.1f + (heightFactor * 0.9f))
+                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                .background(if (heightFactor >= 1f) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = date.dayOfWeek.name.take(1), style = MaterialTheme.typography.labelSmall, fontSize = 8.sp)
+                    }
+                }
             }
         }
     }
@@ -343,7 +411,7 @@ fun GlobalStatsCard(stats: GlobalStats) {
                 StatColumn(label = "Unique", value = stats.uniqueWordsCount)
                 StatColumn(label = "Total", value = stats.totalOccurrencesCount)
                 StatColumn(label = "Learned", value = stats.learnedWordsCount)
-                StatColumn(label = "Translated", value = stats.translatedWordsCount)
+                StatColumn(label = "Words/h", value = stats.wordsPerHour)
             }
         }
     }

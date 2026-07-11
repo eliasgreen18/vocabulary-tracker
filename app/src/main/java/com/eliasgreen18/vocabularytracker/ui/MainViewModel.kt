@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.data.remote.drive.GoogleDriveService
 import com.eliasgreen18.vocabularytracker.data.util.BackupService
 import com.eliasgreen18.vocabularytracker.data.util.ExportService
+import com.eliasgreen18.vocabularytracker.data.util.ProExportService
+import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
 import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetExportDataUseCase
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetHomeDashboardUseCase
@@ -20,6 +22,7 @@ class MainViewModel @Inject constructor(
     private val backupService: BackupService,
     private val googleDriveService: GoogleDriveService,
     private val exportService: ExportService,
+    private val proExportService: ProExportService,
     private val getExportDataUseCase: GetExportDataUseCase,
     private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
@@ -31,6 +34,13 @@ class MainViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = null
     )
+
+    val appTheme: StateFlow<com.eliasgreen18.vocabularytracker.domain.model.AppTheme> = preferencesRepository.getAppTheme()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = com.eliasgreen18.vocabularytracker.domain.model.AppTheme.SYSTEM
+        )
 
     private val _backupFile = MutableStateFlow<File?>(null)
     val backupFile = _backupFile.asStateFlow()
@@ -63,6 +73,22 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun exportToAnki(selectedWords: List<WordWithCount>? = null) {
+        viewModelScope.launch {
+            val words = selectedWords ?: getExportDataUseCase().first()
+            proExportService.exportToAnki(words)
+                .onSuccess { _backupFile.value = it }
+        }
+    }
+
+    fun exportToQuizlet(selectedWords: List<WordWithCount>? = null) {
+        viewModelScope.launch {
+            val words = selectedWords ?: getExportDataUseCase().first()
+            proExportService.exportToQuizlet(words)
+                .onSuccess { _backupFile.value = it }
+        }
+    }
+
     fun syncToDrive() {
         viewModelScope.launch {
             _syncStatus.value = "Starting Sync..."
@@ -82,7 +108,8 @@ class MainViewModel @Inject constructor(
                         _syncStatus.value = "Sync Successful!"
                     }
                     .onFailure { 
-                        _syncStatus.value = "Sync Failed: ${it.message}"
+                        val errorMsg = it.message ?: it.toString()
+                        _syncStatus.value = "Sync Failed: $errorMsg"
                     }
             }.onFailure {
                 _syncStatus.value = "Export Failed"

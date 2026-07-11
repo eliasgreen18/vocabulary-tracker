@@ -29,30 +29,50 @@ class NotificationWorker @AssistedInject constructor(
         val count = dueWords.size
 
         if (count > 0) {
-            showNotification(count)
+            showNotification(
+                title = "Time for your Daily Review!",
+                text = "You have $count words ready to review today."
+            )
+        } else {
+            showNotification(
+                title = "Reading Reminder",
+                text = "Time to continue your reading journey! Open your book to discover new words."
+            )
         }
 
         return Result.success()
     }
 
-    private fun showNotification(count: Int) {
+    private fun showNotification(title: String, text: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Daily Review Reminders",
-            NotificationManager.IMPORTANCE_DEFAULT
+            "Daily Reminders",
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Notifications to remind you of words due for review"
+            description = "Notifications for reviews and reading reminders"
         }
         notificationManager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Placeholder icon
-            .setContentTitle("Time for your Daily Review!")
-            .setContentText("You have $count words ready to review today.")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSmallIcon(com.eliasgreen18.vocabularytracker.R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         notificationManager.notify(NOTIFICATION_ID, notification)

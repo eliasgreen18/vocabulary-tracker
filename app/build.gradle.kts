@@ -20,12 +20,26 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Force 16KB alignment and non-compressed JNI libs for Android 15+
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = true
+                }
+            }
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = true
+                }
+            }
         }
     }
     compileOptions {
@@ -38,7 +52,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // Necessary for Google API Client
             excludes += "META-INF/DEPENDENCIES"
         }
     }
@@ -54,6 +67,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Room
     implementation(libs.androidx.room.runtime)
@@ -86,7 +100,25 @@ dependencies {
     implementation(libs.google.play.services.auth)
     implementation(libs.google.http.client.android)
     implementation(libs.google.generative.ai)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil.compose)
+
+    // CameraX
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
+    // ML Kit
+    implementation(libs.google.mlkit.text.recognition)
+    implementation(libs.google.mlkit.translate)
+
+    // EPUB & HTML
+    implementation("org.jsoup:jsoup:1.15.4")
+
+    // Glance Widgets
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
