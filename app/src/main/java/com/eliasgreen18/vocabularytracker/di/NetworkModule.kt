@@ -1,7 +1,6 @@
 package com.eliasgreen18.vocabularytracker.di
 
 import com.eliasgreen18.vocabularytracker.data.remote.LibreTranslateService
-import com.eliasgreen18.vocabularytracker.data.remote.LocalDictionaryService
 import com.eliasgreen18.vocabularytracker.data.remote.MockTranslationService
 import com.eliasgreen18.vocabularytracker.data.remote.api.LibreTranslateApi
 import com.eliasgreen18.vocabularytracker.data.remote.translation.MlKitTranslationService
@@ -23,7 +22,7 @@ object NetworkModule {
     
     private const val BASE_URL = "https://translate.terraprint.co/"
     
-    // Providers: MOCK, LIBRE, LOCAL, MLKIT
+    // Providers: MOCK, LIBRE, MLKIT
     private const val PROVIDER = "MLKIT" 
 
     @Provides
@@ -66,13 +65,11 @@ object NetworkModule {
     fun provideTranslationService(
         mockService: MockTranslationService,
         libreService: LibreTranslateService,
-        localService: LocalDictionaryService,
         mlKitService: MlKitTranslationService
     ): TranslationService {
         return when(PROVIDER) {
             "MOCK" -> mockService
             "LIBRE" -> libreService
-            "LOCAL" -> localService
             "MLKIT" -> mlKitService
             else -> mlKitService
         }

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Standard App Theme -->
+    <style name="Theme.VocabularyTracker" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper_bg</item>
+        <item name="android:statusBarColor">@color/paper_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 
-    <style name="Theme.VocabularyTracker" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Modern Splash Screen Theme -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/paper_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.VocabularyTracker</item>
+    </style>
 </resources>

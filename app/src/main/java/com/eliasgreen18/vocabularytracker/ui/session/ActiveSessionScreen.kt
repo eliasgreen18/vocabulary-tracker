@@ -1,12 +1,15 @@
 package com.eliasgreen18.vocabularytracker.ui.session
 
+import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -27,13 +30,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.eliasgreen18.vocabularytracker.R
 import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +52,7 @@ fun ActiveSessionScreen(
     val autoScrollEnabled by viewModel.autoScrollEnabled.collectAsState()
     val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
     val isTimerRunning by viewModel.isTimerRunning.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val listState = rememberLazyListState()
 
@@ -58,7 +63,24 @@ fun ActiveSessionScreen(
     
     val focusRequester = remember { FocusRequester() }
 
-    // Listen for OCR results if coming back from scanner
+    // Persistent Timer Control: Handles both lifecycle AND disposal (navigation)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.resumeTimer()
+                Lifecycle.Event.ON_PAUSE -> viewModel.pauseTimer()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        
+        onDispose {
+            viewModel.pauseTimer() // CRITICAL: Save progress when navigating away
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // OCR Integration
     val savedStateHandle = viewModel.savedStateHandle
     val ocrResult = savedStateHandle.getStateFlow<String?>("scanned_text", null).collectAsState()
     
@@ -66,18 +88,17 @@ fun ActiveSessionScreen(
         ocrResult.value?.let { text ->
             snippetText = text
             showSnippetField = true
-            savedStateHandle["scanned_text"] = null // consume
+            savedStateHandle["scanned_text"] = null
         }
     }
 
-    // Auto-scroll logic: pin to top instantly if enabled
+    // Auto-scroll logic
     LaunchedEffect(sessionWords.size) {
         if (sessionWords.isNotEmpty() && autoScrollEnabled) {
             listState.scrollToItem(0)
         }
     }
 
-    // Word Editing Dialog state
     var wordToEdit by remember { mutableStateOf<WordWithCount?>(null) }
 
     Scaffold(
@@ -109,7 +130,6 @@ fun ActiveSessionScreen(
                                     }
                                 }
                             }
-                            // Timer Display
                             Text(
                                 text = formatElapsed(elapsedSeconds),
                                 style = MaterialTheme.typography.labelSmall,
@@ -147,7 +167,7 @@ fun ActiveSessionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Focus Input Field Area
+            // Input Area
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -229,7 +249,7 @@ fun ActiveSessionScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Minimalist Chronological Feed
+            // History Feed
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 state = listState,
@@ -285,8 +305,8 @@ private fun formatElapsed(seconds: Long): String {
     val h = seconds / 3600
     val m = (seconds % 3600) / 60
     val s = seconds % 60
-    return if (h > 0) String.format("%d:%02d:%02d", h, m, s)
-    else String.format("%02d:%02d", m, s)
+    return if (h > 0) java.util.Locale.getDefault().let { String.format(it, "%d:%02d:%02d", h, m, s) }
+    else java.util.Locale.getDefault().let { String.format(it, "%02d:%02d", m, s) }
 }
 
 @Composable
@@ -327,19 +347,17 @@ fun FocusWordItem(
                         )
                     }
                 }
-                else -> { /* Show nothing or error */ }
+                else -> { }
             }
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Compact Metrics
                 MetricChip(value = word.sessionCount, isPrimary = true)
                 Spacer(modifier = Modifier.width(4.dp))
                 MetricChip(value = word.globalCount, isPrimary = false)
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                // Growth Action: Plus
                 IconButton(onClick = onPlusClick, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -349,7 +367,6 @@ fun FocusWordItem(
                     )
                 }
 
-                // Maintenance Hub: Overflow Menu
                 Box {
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
                         Icon(
@@ -492,7 +509,9 @@ fun EditChapterDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                onDismiss()
+            }) {
                 Text("Cancel")
             }
         }

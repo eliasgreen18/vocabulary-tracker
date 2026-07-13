@@ -16,7 +16,7 @@ import com.eliasgreen18.vocabularytracker.data.local.entity.*
         WordRelationshipEntity::class,
         HighlightEntity::class
     ],
-    version = 19,
+    version = 21,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

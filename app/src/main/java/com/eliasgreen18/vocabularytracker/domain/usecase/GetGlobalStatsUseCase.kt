@@ -18,7 +18,7 @@ class GetGlobalStatsUseCase @Inject constructor(
 ) {
     operator fun invoke(): Flow<GlobalStats> {
         return combine(
-            repository.searchWords(""),
+            repository.getAllWordsWithCount(),
             repository.getTotalOccurrencesCount(),
             repository.getTranslatedWordsCount(),
             repository.getTotalReviewsDoneCount(),

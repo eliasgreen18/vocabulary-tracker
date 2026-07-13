@@ -11,4 +11,5 @@ interface BookRepository {
     suspend fun updateBook(book: Book)
     suspend fun updateLastOpened(bookId: Long)
     suspend fun updateBookStatus(bookId: Long, status: com.eliasgreen18.vocabularytracker.domain.model.BookStatus)
+    suspend fun deleteBook(bookId: Long)
 }

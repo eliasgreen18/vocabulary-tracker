@@ -1,12 +1,14 @@
 package com.eliasgreen18.vocabularytracker.ui.words
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,15 +16,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.eliasgreen18.vocabularytracker.R
 import com.eliasgreen18.vocabularytracker.domain.model.WordMastery
 import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
-import com.eliasgreen18.vocabularytracker.ui.util.MainTopBar
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -35,14 +40,12 @@ fun WordsScreen(
     onExportCsvClick: () -> Unit,
     onExportJsonClick: () -> Unit,
     onExportAnkiClick: (List<WordWithCount>) -> Unit,
-    onExportQuizletClick: (List<WordWithCount>) -> Unit,
-    viewModel: WordsViewModel = hiltViewModel()
+    viewModel: WordsViewModel = hiltViewModel(),
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val filters by viewModel.filters.collectAsState()
     val availableBooks by viewModel.availableBooks.collectAsState()
-    val availableAuthors by viewModel.availableAuthors.collectAsState()
     
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedIds by viewModel.selectedWordIds.collectAsState()
@@ -50,17 +53,33 @@ fun WordsScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            if (isSelectionMode) {
-                TopAppBar(
-                    title = { Text("${selectedIds.size} selected") },
-                    navigationIcon = {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Integrated Header
+        if (isSelectionMode) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                            Icon(Icons.Default.Close, contentDescription = "Clear")
                         }
-                    },
-                    actions = {
+                        Text("${selectedIds.size} selected", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Row {
                         IconButton(onClick = { viewModel.toggleFocusForSelected(true) }) {
                             Icon(Icons.Default.Star, contentDescription = "Star selected")
                         }
@@ -71,149 +90,189 @@ fun WordsScreen(
                             Icon(Icons.Default.UploadFile, contentDescription = "Export Anki")
                         }
                         IconButton(onClick = { showDeleteConfirm = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete selected", tint = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                )
-            } else {
-                MainTopBar(
-                    title = "My Vocabulary",
-                    onNavigateToSettings = onNavigateToSettings,
-                    onNavigateToNotifications = onNavigateToNotifications,
-                    onBackupClick = onBackupClick,
-                    onSyncClick = onSyncClick,
-                    onExportCsvClick = onExportCsvClick,
-                    onExportJsonClick = onExportJsonClick
-                )
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-        ) {
-            if (!isSelectionMode) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChanged(it) },
-                        placeholder = { Text("Search...", fontSize = 14.sp) },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
-                    
-                    FilledTonalIconButton(
-                        onClick = { showFilterDialog = true },
-                        modifier = Modifier.size(48.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = if (filters != FilterState()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        BadgedBox(badge = {
-                            if (filters != FilterState()) {
-                                Badge(containerColor = MaterialTheme.colorScheme.primary)
-                            }
-                        }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
             }
-
+        } else {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${searchResults.size} words found",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    text = stringResource(R.string.words_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                if (filters != FilterState()) {
-                    TextButton(onClick = { viewModel.clearFilters() }, contentPadding = PaddingValues(0.dp)) {
-                        Text("Clear Filters", style = MaterialTheme.typography.labelSmall)
+                
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_notifications)) },
+                            onClick = { showMenu = false; onNavigateToNotifications() },
+                            leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_settings)) },
+                            onClick = { showMenu = false; onNavigateToSettings() },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_sync_drive)) },
+                            onClick = { showMenu = false; onSyncClick() },
+                            leadingIcon = { Icon(Icons.Default.CloudSync, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_export_csv)) },
+                            onClick = { showMenu = false; onExportCsvClick() },
+                            leadingIcon = { Icon(Icons.Default.TableChart, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_export_json)) },
+                            onClick = { showMenu = false; onExportJsonClick() },
+                            leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_db_backup)) },
+                            onClick = { showMenu = false; onBackupClick() },
+                            leadingIcon = { Icon(Icons.Default.Backup, contentDescription = null) }
+                        )
                     }
                 }
             }
-            
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 16.dp)
+        }
+
+        if (!isSelectionMode) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(searchResults, key = { it.wordId }) { wordWithCount ->
-                    val isSelected = selectedIds.contains(wordWithCount.wordId)
-                    WordItem(
-                        word = wordWithCount,
-                        isSelected = isSelected,
-                        selectionMode = isSelectionMode,
-                        onToggleFocus = { isFocus -> viewModel.onToggleFocus(wordWithCount.wordId, isFocus) },
-                        onLongClick = { viewModel.toggleSelection(wordWithCount.wordId) },
-                        onClick = { 
-                            if (isSelectionMode) viewModel.toggleSelection(wordWithCount.wordId)
-                            else onNavigateToWordDetail(wordWithCount.wordId) 
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                    placeholder = { Text(stringResource(R.string.search_hint), fontSize = 14.sp) },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                            }
                         }
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
                     )
+                )
+                
+                FilledTonalIconButton(
+                    onClick = { showFilterDialog = true },
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (filters != FilterState()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    BadgedBox(badge = {
+                        if (filters != FilterState()) {
+                            Badge(containerColor = MaterialTheme.colorScheme.primary)
+                        }
+                    }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                    }
                 }
             }
         }
 
-        if (showDeleteConfirm) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirm = false },
-                title = { Text("Delete selected words?") },
-                text = { Text("This will permanently remove ${selectedIds.size} words and all their history.") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.deleteSelectedWords()
-                            showDeleteConfirm = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Delete")
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(R.string.words_found_count, searchResults.size),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+            )
+            if (filters != FilterState()) {
+                TextButton(onClick = { viewModel.clearFilters() }, contentPadding = PaddingValues(0.dp)) {
+                    Text(stringResource(R.string.reset_filters), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(searchResults, key = { it.wordId }) { wordWithCount ->
+                val isSelected = selectedIds.contains(wordWithCount.wordId)
+                WordItem(
+                    word = wordWithCount,
+                    isSelected = isSelected,
+                    selectionMode = isSelectionMode,
+                    onToggleFocus = { isFocus -> viewModel.onToggleFocus(wordWithCount.wordId, isFocus) },
+                    onLongClick = { viewModel.toggleSelection(wordWithCount.wordId) },
+                    onClick = { 
+                        if (isSelectionMode) viewModel.toggleSelection(wordWithCount.wordId)
+                        else onNavigateToWordDetail(wordWithCount.wordId) 
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-                }
-            )
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 24.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+            }
         }
+    }
 
-        if (showFilterDialog) {
-            FilterDialog(
-                currentFilters = filters,
-                availableBooks = availableBooks.map { it.id to it.title },
-                availableAuthors = availableAuthors,
-                onDismiss = { showFilterDialog = false },
-                onApply = { 
-                    viewModel.updateFilters(it)
-                    showFilterDialog = false
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.delete_selected_title)) },
+            text = { Text(stringResource(R.string.delete_selected_desc)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSelectedWords()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.delete))
                 }
-            )
-        }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
+    if (showFilterDialog) {
+        FilterDialog(
+            currentFilters = filters,
+            availableBooks = availableBooks.map { it.id to it.title },
+            onDismiss = { showFilterDialog = false },
+            onApply = { 
+                viewModel.updateFilters(it)
+                showFilterDialog = false
+            }
+        )
     }
 }
 
@@ -221,7 +280,6 @@ fun WordsScreen(
 fun FilterDialog(
     currentFilters: FilterState,
     availableBooks: List<Pair<Long, String>>,
-    availableAuthors: List<String>,
     onDismiss: () -> Unit,
     onApply: (FilterState) -> Unit
 ) {
@@ -229,98 +287,103 @@ fun FilterDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Search Filters") },
+        title = { Text(stringResource(R.string.filter_refine_title), fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // Favorites
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = tempFilters.isFavoriteOnly, onCheckedChange = { tempFilters = tempFilters.copy(isFavoriteOnly = it) })
-                    Text("Only Favorites (Star)")
+                Surface(
+                    onClick = { tempFilters = tempFilters.copy(isFavoriteOnly = !tempFilters.isFavoriteOnly) },
+                    color = if (tempFilters.isFavoriteOnly) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    shape = MaterialTheme.shapes.medium,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (tempFilters.isFavoriteOnly) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = if (tempFilters.isFavoriteOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(stringResource(R.string.filter_only_favorites), style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
 
                 // Mastery
-                Text("By Status", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WordMastery.values().forEach { mastery ->
-                        FilterChip(
-                            selected = tempFilters.mastery == mastery,
-                            onClick = { 
-                                tempFilters = tempFilters.copy(mastery = if (tempFilters.mastery == mastery) null else mastery)
-                            },
-                            label = { Text(mastery.name.lowercase().replaceFirstChar { it.uppercase() }) }
-                        )
+                Column {
+                    Text(stringResource(R.string.filter_by_knowledge), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WordMastery.entries.forEach { mastery ->
+                            FilterChip(
+                                selected = tempFilters.mastery == mastery,
+                                onClick = { 
+                                    tempFilters = tempFilters.copy(mastery = if (tempFilters.mastery == mastery) null else mastery)
+                                },
+                                label = { Text(mastery.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                            )
+                        }
                     }
                 }
 
                 // Books
                 if (availableBooks.isNotEmpty()) {
-                    Text("By Book", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Box(modifier = Modifier.heightIn(max = 120.dp)) {
-                        LazyColumn {
-                            items(availableBooks) { (id, title) ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { 
-                                        tempFilters = tempFilters.copy(bookId = if (tempFilters.bookId == id) null else id)
-                                    }.padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = tempFilters.bookId == id, onClick = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column {
+                        Text(stringResource(R.string.filter_by_book), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(modifier = Modifier.heightIn(max = 140.dp).fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                            LazyColumn(modifier = Modifier.padding(4.dp)) {
+                                items(availableBooks) { (id, title) ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clickable { 
+                                            tempFilters = tempFilters.copy(bookId = if (tempFilters.bookId == id) null else id)
+                                        }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(selected = tempFilters.bookId == id, onClick = null, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(title, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Authors
-                if (availableAuthors.isNotEmpty()) {
-                    Text("By Author", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Box(modifier = Modifier.heightIn(max = 120.dp)) {
-                        LazyColumn {
-                            items(availableAuthors) { author ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { 
-                                        tempFilters = tempFilters.copy(author = if (tempFilters.author == author) null else author)
-                                    }.padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = tempFilters.author == author, onClick = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(author)
-                                }
-                            }
-                        }
+                // Encounters
+                Column {
+                    Text(stringResource(R.string.filter_by_encounters), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = tempFilters.minHits?.toString() ?: "",
+                            onValueChange = { tempFilters = tempFilters.copy(minHits = it.toIntOrNull()) },
+                            placeholder = { Text(stringResource(R.string.filter_min), fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        Text(stringResource(R.string.filter_to), style = MaterialTheme.typography.bodySmall)
+                        OutlinedTextField(
+                            value = tempFilters.maxHits?.toString() ?: "",
+                            onValueChange = { tempFilters = tempFilters.copy(maxHits = it.toIntOrNull()) },
+                            placeholder = { Text(stringResource(R.string.filter_max), fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.medium
+                        )
                     }
-                }
-
-                // Hits
-                Text("By Encounters", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = tempFilters.minHits?.toString() ?: "",
-                        onValueChange = { tempFilters = tempFilters.copy(minHits = it.toIntOrNull()) },
-                        label = { Text("Min") },
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
-                    Text("-")
-                    OutlinedTextField(
-                        value = tempFilters.maxHits?.toString() ?: "",
-                        onValueChange = { tempFilters = tempFilters.copy(maxHits = it.toIntOrNull()) },
-                        label = { Text("Max") },
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { onApply(tempFilters) }) {
-                Text("Apply Filters")
+            Button(onClick = { onApply(tempFilters) }, shape = MaterialTheme.shapes.medium) {
+                Text(stringResource(R.string.filter_apply))
             }
         },
         dismissButton = {
@@ -328,7 +391,7 @@ fun FilterDialog(
                 tempFilters = FilterState()
                 onApply(tempFilters)
             }) {
-                Text("Clear All")
+                Text(stringResource(R.string.clear_filters))
             }
         }
     )
@@ -344,83 +407,89 @@ fun WordItem(
     onLongClick: () -> Unit,
     onClick: () -> Unit
 ) {
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent
+            )
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
+            .padding(vertical = 12.dp, horizontal = 4.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp, horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Mastery Dot
-            if (!selectionMode) {
-                Surface(
-                    color = when (word.mastery) {
-                        WordMastery.NEW -> MaterialTheme.colorScheme.outlineVariant
-                        WordMastery.LEARNING -> MaterialTheme.colorScheme.primaryContainer
-                        WordMastery.LEARNED -> Color(0xFFC8E6C9)
-                    },
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    modifier = Modifier.size(8.dp)
-                ) {}
-                Spacer(modifier = Modifier.width(12.dp))
-            }
+            // Minimal Mastery Indicator
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (word.mastery) {
+                            WordMastery.NEW -> MaterialTheme.colorScheme.outlineVariant
+                            WordMastery.LEARNING -> MaterialTheme.colorScheme.primary
+                            WordMastery.LEARNED -> Color(0xFF4CAF50)
+                        }
+                    )
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
 
-            // Word and Translation
+            // Word and Translation (High Density)
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = word.wordText,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontFamily = FontFamily.Serif
                     )
-                    if (word.translation != null) {
+                    word.translation?.let {
                         Text(
-                            text = " • ${word.translation}",
+                            text = " • $it",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                
-                Text(
-                    text = "${word.globalCount} encounters",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
             }
 
-            // Actions
-            if (selectionMode) {
-                Checkbox(
-                    checked = isSelected, 
-                    onCheckedChange = { onClick() },
-                    modifier = Modifier.size(24.dp)
+            // Compact Stats and Action
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = word.globalCount.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Bold
                 )
-            } else {
-                IconButton(
-                    onClick = { onToggleFocus(!word.isFocusWord) },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = "Focus",
-                        tint = if (word.isFocusWord) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                        modifier = Modifier.size(20.dp)
+                
+                Spacer(modifier = Modifier.width(8.dp))
+
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected, 
+                        onCheckedChange = { onClick() },
+                        modifier = Modifier.size(24.dp)
                     )
+                } else {
+                    IconButton(
+                        onClick = { onToggleFocus(!word.isFocusWord) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (word.isFocusWord) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = if (word.isFocusWord) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
     }
-    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }

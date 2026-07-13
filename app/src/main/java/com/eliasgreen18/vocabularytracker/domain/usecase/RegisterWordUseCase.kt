@@ -18,7 +18,7 @@ class RegisterWordUseCase @Inject constructor(
     private val findWordUseCase: FindWordUseCase,
     private val recordOccurrenceUseCase: RecordOccurrenceUseCase,
     private val translationService: TranslationService,
-    private val phoneticService: PhoneticService
+    private val phoneticService: PhoneticService,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -67,10 +67,8 @@ class RegisterWordUseCase @Inject constructor(
                 repository.updateTranslation(wordId, null, TranslationStatus.ERROR)
             }
             
-            if (ipa != null) {
-                repository.updateIpa(wordId, ipa)
-            }
-        } catch (e: Exception) {
+            ipa?.let { repository.updateIpa(wordId, it) }
+        } catch (ignored: Exception) {
             repository.updateTranslation(wordId, null, TranslationStatus.ERROR)
         }
     }

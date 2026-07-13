@@ -5,16 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.data.util.FileStorageService
 import com.eliasgreen18.vocabularytracker.domain.model.Book
-import com.eliasgreen18.vocabularytracker.domain.model.BookStatus
 import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
-import com.eliasgreen18.vocabularytracker.domain.model.Chapter
-import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +16,7 @@ import javax.inject.Inject
 class BookViewModel @Inject constructor(
     getBooksUseCase: GetBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
-    private val getActiveSessionUseCase: GetActiveSessionUseCase,
-    private val startReadingSessionUseCase: StartReadingSessionUseCase,
-    private val getChapterByNumberUseCase: GetChapterByNumberUseCase,
-    private val upsertChapterUseCase: UpsertChapterUseCase,
     private val fileStorageService: FileStorageService,
-    private val repository: BookRepository
 ) : ViewModel() {
 
     val booksState: StateFlow<List<BookWithStats>> = getBooksUseCase()
@@ -37,59 +26,22 @@ class BookViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    fun addBook(title: String, author: String, language: String, genre: String? = null, coverUri: Uri? = null) {
+    fun addBook(title: String, author: String, language: String, genre: String?, coverUri: Uri?) {
         viewModelScope.launch {
-            val coverPath = coverUri?.let { 
-                fileStorageService.saveBookCover(it).getOrNull()
+            var coverPath: String? = null
+            coverUri?.let {
+                coverPath = fileStorageService.saveBookCover(it).getOrNull()
             }
             
-            val newBook = Book(
-                title = title,
-                author = author,
-                language = language,
-                genre = genre,
-                coverPath = coverPath,
-                status = BookStatus.READING
+            addBookUseCase(
+                Book(
+                    title = title,
+                    author = author,
+                    language = language,
+                    genre = genre,
+                    coverPath = coverPath
+                )
             )
-            addBookUseCase(newBook)
-        }
-    }
-
-    fun onBookClicked(
-        bookId: Long, 
-        onSessionReady: (Long) -> Unit, 
-        onAskChapterNumber: (Long) -> Unit
-    ) {
-        viewModelScope.launch {
-            repository.updateLastOpened(bookId)
-            val activeSession = getActiveSessionUseCase(bookId).first()
-            if (activeSession != null) {
-                onSessionReady(activeSession.id)
-            } else {
-                onAskChapterNumber(bookId)
-            }
-        }
-    }
-
-    fun onChapterNumberEntered(bookId: Long, number: String, onExists: (Long) -> Unit, onNew: (String) -> Unit) {
-        viewModelScope.launch {
-            val existingChapter = getChapterByNumberUseCase(bookId, number)
-            if (existingChapter != null) {
-                val sessionId = startReadingSessionUseCase(existingChapter.id)
-                onExists(sessionId)
-            } else {
-                onNew(number)
-            }
-        }
-    }
-
-    fun startSessionWithNewChapter(bookId: Long, number: String, title: String?, onSessionStarted: (Long) -> Unit) {
-        viewModelScope.launch {
-            val chapterId = upsertChapterUseCase(
-                Chapter(bookId = bookId, number = number, title = title)
-            )
-            val sessionId = startReadingSessionUseCase(chapterId)
-            onSessionStarted(sessionId)
         }
     }
 }

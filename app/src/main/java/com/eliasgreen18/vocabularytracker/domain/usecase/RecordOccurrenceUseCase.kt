@@ -16,5 +16,6 @@ class RecordOccurrenceUseCase @Inject constructor(
             snippet = snippet
         )
         repository.insertOccurrence(occurrence)
+        repository.incrementOccurrenceCount(wordId)
     }
 }

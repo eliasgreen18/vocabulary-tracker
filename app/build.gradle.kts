@@ -21,7 +21,6 @@ android {
 
     buildTypes {
         debug {
-            // Force 16KB alignment and non-compressed JNI libs for Android 15+
             packaging {
                 jniLibs {
                     useLegacyPackaging = true
@@ -48,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.kotlinx.coroutines.play.services)
 
@@ -85,15 +86,13 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
-    compileOnly(libs.errorprone.annotations)
 
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp.logging)
 
-    // Google Drive & Auth
+    // Google Services & Utils
     implementation(libs.google.api.client.android)
     implementation(libs.google.api.services.drive)
     implementation(libs.google.auth.library.oauth2.http)
@@ -117,14 +116,22 @@ dependencies {
     implementation("org.jsoup:jsoup:1.15.4")
 
     // Glance Widgets
+    implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
 
+    // Unit Testing
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+
+    // Instrumentation Testing
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

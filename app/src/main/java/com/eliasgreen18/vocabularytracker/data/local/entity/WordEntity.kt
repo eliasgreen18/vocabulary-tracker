@@ -1,12 +1,19 @@
 package com.eliasgreen18.vocabularytracker.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.eliasgreen18.vocabularytracker.domain.model.TranslationStatus
-import com.eliasgreen18.vocabularytracker.domain.model.Word
-import java.time.Instant
 
-@Entity(tableName = "words")
+@Entity(
+    tableName = "words",
+    indices = [
+        Index("text"),
+        Index("translation"),
+        Index("isFocusWord"),
+        Index("globalCount")
+    ]
+)
 data class WordEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val text: String,
@@ -24,43 +31,6 @@ data class WordEntity(
     val ipa: String? = null,
     val notes: String? = null,
     val aiExplanation: String? = null,
-    val aiExamples: String? = null
-)
-
-fun WordEntity.toDomain() = Word(
-    id = id,
-    text = text,
-    translation = translation,
-    isFocusWord = isFocusWord,
-    lastReviewedAt = lastReviewedAt,
-    reviewPriority = reviewPriority,
-    translationStatus = TranslationStatus.valueOf(translationStatus),
-    nextReviewAt = nextReviewAt?.let { Instant.ofEpochMilli(it) },
-    lastSrsReviewAt = lastSrsReviewAt?.let { Instant.ofEpochMilli(it) },
-    reviewCount = reviewCount,
-    successfulReviews = successfulReviews,
-    currentIntervalDays = currentIntervalDays,
-    ipa = ipa,
-    notes = notes,
-    aiExplanation = aiExplanation,
-    aiExamples = aiExamples
-)
-
-fun Word.toEntity() = WordEntity(
-    id = id,
-    text = text,
-    translation = translation,
-    isFocusWord = isFocusWord,
-    lastReviewedAt = lastReviewedAt,
-    reviewPriority = reviewPriority,
-    translationStatus = translationStatus.name,
-    nextReviewAt = nextReviewAt?.toEpochMilli(),
-    lastSrsReviewAt = lastSrsReviewAt?.toEpochMilli(),
-    reviewCount = reviewCount,
-    successfulReviews = successfulReviews,
-    currentIntervalDays = currentIntervalDays,
-    ipa = ipa,
-    notes = notes,
-    aiExplanation = aiExplanation,
-    aiExamples = aiExamples
+    val aiExamples: String? = null,
+    val globalCount: Int = 0
 )

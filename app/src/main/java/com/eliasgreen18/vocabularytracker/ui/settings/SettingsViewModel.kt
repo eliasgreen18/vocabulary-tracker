@@ -89,6 +89,13 @@ class SettingsViewModel @Inject constructor(
             initialValue = AppTheme.SYSTEM
         )
 
+    val userName: StateFlow<String> = preferencesRepository.getUserName()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Reader"
+        )
+
     private val _importStatus = MutableStateFlow<String?>(null)
     val importStatus = _importStatus.asStateFlow()
 
@@ -184,12 +191,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setUserName(name: String) {
+        viewModelScope.launch {
+            preferencesRepository.setUserName(name)
+        }
+    }
+
     fun triggerMassTranslation() {
         viewModelScope.launch {
             _importStatus.value = "Enqueuing translations..."
-            wordRepository.getAllWords().first().forEach { word ->
+            wordRepository.getAllWordsWithCount().first().forEach { word ->
                 if (word.translationStatus == TranslationStatus.NOT_REQUESTED || word.translationStatus == TranslationStatus.ERROR) {
-                    requestTranslationUseCase(word)
+                    requestTranslationUseCase(word.wordId, word.wordText)
                 }
             }
             _importStatus.value = "Translation tasks added to queue."

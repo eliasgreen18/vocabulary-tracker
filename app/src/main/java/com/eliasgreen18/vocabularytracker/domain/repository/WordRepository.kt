@@ -12,6 +12,7 @@ interface WordRepository {
     fun getWordByIdFlow(id: Long): Flow<Word?>
     suspend fun insertWord(word: Word): Long
     suspend fun updateWordText(wordId: Long, newText: String)
+    suspend fun incrementOccurrenceCount(wordId: Long)
     suspend fun updateIpa(wordId: Long, ipa: String?)
     suspend fun updateNotes(wordId: Long, notes: String?)
     suspend fun updateAiInsights(wordId: Long, explanation: String?, examples: String?)
@@ -32,7 +33,6 @@ interface WordRepository {
         maxHits: Int? = null
     ): Flow<List<WordWithCount>>
     fun getAllWordsWithCount(): Flow<List<WordWithCount>>
-    fun getAllWords(): Flow<List<Word>>
     fun getFocusWords(): Flow<List<WordWithCount>>
     suspend fun updateFocusStatus(wordId: Long, isFocus: Boolean)
     fun getTotalWordsCount(): Flow<Int>

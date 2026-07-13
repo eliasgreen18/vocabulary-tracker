@@ -4,43 +4,44 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.lifecycleScope
-import com.eliasgreen18.vocabularytracker.data.local.dictionary.DictionaryInitializer
+import androidx.compose.runtime.*
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.eliasgreen18.vocabularytracker.data.util.SpeechService
-import com.eliasgreen18.vocabularytracker.domain.usecase.ProcessPendingTranslationsUseCase
 import com.eliasgreen18.vocabularytracker.ui.MainContainer
+import com.eliasgreen18.vocabularytracker.ui.components.SplashScreen
 import com.eliasgreen18.vocabularytracker.ui.theme.VocabularyTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    
-    @Inject
-    lateinit var dictionaryInitializer: DictionaryInitializer
 
     @Inject
     lateinit var speechService: SpeechService
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        val systemSplash = installSplashScreen()
         
-        lifecycleScope.launch {
-            dictionaryInitializer.initializeIfNeeded(applicationContext)
-        }
-
-        // Auto-translation processing disabled for stabilization
-        /*
-        lifecycleScope.launch {
-            processPendingTranslationsUseCase()
-        }
-        */
-
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
         setContent {
+            var showBrandingSplash by remember { mutableStateOf(true) }
+            
+            // Branding remains visible for a very short time to bridge the gap
+            // and show version info without feeling like a "second screen"
+            LaunchedEffect(Unit) {
+                delay(600) // Optimal for transition
+                showBrandingSplash = false
+            }
+            
             VocabularyTrackerTheme {
-                MainContainer()
+                if (showBrandingSplash) {
+                    SplashScreen(versionName = BuildConfig.VERSION_NAME)
+                } else {
+                    MainContainer()
+                }
             }
         }
     }

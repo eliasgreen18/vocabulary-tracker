@@ -1,5 +1,7 @@
 package com.eliasgreen18.vocabularytracker.domain.repository
 
+import com.eliasgreen18.vocabularytracker.domain.model.AppTheme
+import com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme
 import kotlinx.coroutines.flow.Flow
 
 interface UserPreferencesRepository {
@@ -9,11 +11,14 @@ interface UserPreferencesRepository {
     fun isNotificationEnabled(): Flow<Boolean>
     suspend fun setNotificationEnabled(enabled: Boolean)
 
-    fun getNotificationTime(): Flow<Pair<Int, Int>> // Pair(hour, minute)
+    fun getNotificationTime(): Flow<Pair<Int, Int>>
     suspend fun setNotificationTime(hour: Int, minute: Int)
 
     fun isAutoScrollEnabled(): Flow<Boolean>
     suspend fun setAutoScrollEnabled(enabled: Boolean)
+
+    fun getAppTheme(): Flow<AppTheme>
+    suspend fun setAppTheme(theme: AppTheme)
 
     fun getGeminiApiKey(): Flow<String?>
     suspend fun setGeminiApiKey(key: String?)
@@ -27,6 +32,12 @@ interface UserPreferencesRepository {
     fun isAutoSpeakEnabled(): Flow<Boolean>
     suspend fun setAutoSpeakEnabled(enabled: Boolean)
 
-    fun getAppTheme(): Flow<com.eliasgreen18.vocabularytracker.domain.model.AppTheme>
-    suspend fun setAppTheme(theme: com.eliasgreen18.vocabularytracker.domain.model.AppTheme)
+    fun getUserName(): Flow<String>
+    suspend fun setUserName(name: String)
+
+    fun getReaderTheme(): Flow<ReaderTheme>
+    suspend fun setReaderTheme(theme: ReaderTheme)
+
+    fun getReaderFontSize(): Flow<Int>
+    suspend fun setReaderFontSize(size: Int)
 }

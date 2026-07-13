@@ -257,6 +257,46 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Words indexes
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_text` ON `words` (`text`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_translation` ON `words` (`translation`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_isFocusWord` ON `words` (`isFocusWord`)")
+            
+            // Occurrences indexes
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_occurrences_wordId` ON `occurrences` (`wordId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_occurrences_sessionId` ON `occurrences` (`sessionId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_occurrences_createdAt` ON `occurrences` (`createdAt`)")
+            
+            // Reading sessions indexes
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_reading_sessions_chapterId` ON `reading_sessions` (`chapterId`)")
+            
+            // Books indexes
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_books_author` ON `books` (`author`)")
+        }
+    }
+
+    private val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 1. Add globalCount column
+            db.execSQL("ALTER TABLE words ADD COLUMN globalCount INTEGER NOT NULL DEFAULT 0")
+            
+            // 2. Populate globalCount with existing data
+            db.execSQL("""
+                UPDATE words 
+                SET globalCount = (
+                    SELECT COUNT(*) 
+                    FROM occurrences 
+                    WHERE occurrences.wordId = words.id
+                )
+            """)
+            
+            // 3. Index the new column for sorting
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_globalCount` ON `words` (`globalCount`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocabularyDatabase {
@@ -265,7 +305,7 @@ object DatabaseModule {
             VocabularyDatabase::class.java,
             "vocabulary_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
         .fallbackToDestructiveMigration()
         .build()
     }

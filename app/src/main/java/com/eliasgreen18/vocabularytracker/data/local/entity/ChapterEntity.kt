@@ -3,7 +3,6 @@ package com.eliasgreen18.vocabularytracker.data.local.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 
 @Entity(
     tableName = "chapters",
@@ -12,20 +11,6 @@ import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 data class ChapterEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bookId: Long,
-    val number: String, // Changed from Int to String
+    val number: String,
     val title: String?
-)
-
-fun ChapterEntity.toDomain() = Chapter(
-    id = id,
-    bookId = bookId,
-    number = number,
-    title = title
-)
-
-fun Chapter.toEntity() = ChapterEntity(
-    id = id,
-    bookId = bookId,
-    number = number,
-    title = title
 )

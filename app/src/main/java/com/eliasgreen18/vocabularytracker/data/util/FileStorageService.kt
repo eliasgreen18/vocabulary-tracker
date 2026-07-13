@@ -70,11 +70,17 @@ class FileStorageService @Inject constructor(
     }
 
     fun deleteCover(path: String) {
+        deleteFile(path)
+    }
+
+    fun deleteFile(path: String) {
         try {
             val file = File(path)
-            if (file.exists()) file.delete()
+            if (file.exists()) {
+                file.delete()
+            }
         } catch (e: Exception) {
-            // Ignore errors on delete
+            // Log or ignore errors on delete
         }
     }
 }

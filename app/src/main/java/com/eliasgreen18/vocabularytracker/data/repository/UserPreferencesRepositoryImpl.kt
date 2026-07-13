@@ -29,6 +29,9 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
         private const val KEY_AUTO_SPEAK_ENABLED = "auto_speak_enabled"
         private const val KEY_APP_THEME = "app_theme"
+        private const val KEY_READER_THEME = "reader_theme"
+        private const val KEY_READER_FONT_SIZE = "reader_font_size"
+        private const val KEY_USER_NAME = "user_name"
     }
 
     private fun <T> preferenceFlow(key: String, defaultValue: T): Flow<T> = callbackFlow {
@@ -38,6 +41,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
                 val value = when (defaultValue) {
                     is Boolean -> p.getBoolean(k, defaultValue) as T
                     is Int -> p.getInt(k, defaultValue) as T
+                    is String -> p.getString(k, defaultValue) as T
                     else -> throw IllegalArgumentException("Unsupported type")
                 }
                 trySend(value)
@@ -50,6 +54,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val value = when (defaultValue) {
             is Boolean -> prefs.getBoolean(key, defaultValue) as T
             is Int -> prefs.getInt(key, defaultValue) as T
+            is String -> prefs.getString(key, defaultValue) as T
             else -> throw IllegalArgumentException("Unsupported type")
         }
         emit(value)
@@ -150,5 +155,34 @@ class UserPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun setAppTheme(theme: com.eliasgreen18.vocabularytracker.domain.model.AppTheme) {
         prefs.edit().putString(KEY_APP_THEME, theme.name).apply()
+    }
+
+    override fun getUserName(): Flow<String> = preferenceFlow(KEY_USER_NAME, "Reader")
+    
+    override suspend fun setUserName(name: String) {
+        prefs.edit().putString(KEY_USER_NAME, name).apply()
+    }
+
+    override fun getReaderTheme(): Flow<com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == KEY_READER_THEME) {
+                val themeName = p.getString(key, com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme.PAPER.name)
+                trySend(com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme.valueOf(themeName!!))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        val current = prefs.getString(KEY_READER_THEME, com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme.PAPER.name)
+        trySend(com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme.valueOf(current!!))
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override suspend fun setReaderTheme(theme: com.eliasgreen18.vocabularytracker.domain.model.ReaderTheme) {
+        prefs.edit().putString(KEY_READER_THEME, theme.name).apply()
+    }
+
+    override fun getReaderFontSize(): Flow<Int> = preferenceFlow(KEY_READER_FONT_SIZE, 18)
+
+    override suspend fun setReaderFontSize(size: Int) {
+        prefs.edit().putInt(KEY_READER_FONT_SIZE, size).apply()
     }
 }

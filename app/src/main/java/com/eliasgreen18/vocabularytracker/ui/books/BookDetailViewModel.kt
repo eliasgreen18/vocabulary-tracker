@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.eliasgreen18.vocabularytracker.data.util.FileStorageService
 import com.eliasgreen18.vocabularytracker.domain.model.*
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
+import com.eliasgreen18.vocabularytracker.domain.repository.ChapterRepository
 import com.eliasgreen18.vocabularytracker.domain.repository.WordRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,11 +16,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class BookDetailUiState(
+    val book: Book? = null,
     val stats: BookStats? = null,
     val chapters: List<Chapter> = emptyList(),
     val mastery: Map<Long, ChapterMastery> = emptyMap(),
     val activeSession: ReadingSession? = null,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
 )
 
 @HiltViewModel
@@ -30,29 +32,31 @@ class BookDetailViewModel @Inject constructor(
     private val startReadingSessionUseCase: StartReadingSessionUseCase,
     private val getChapterByNumberUseCase: GetChapterByNumberUseCase,
     private val upsertChapterUseCase: UpsertChapterUseCase,
-    private val getActiveSessionUseCase: GetActiveSessionUseCase,
+    getActiveSessionUseCase: GetActiveSessionUseCase,
     private val deleteChapterUseCase: DeleteChapterUseCase,
+    private val deleteBookUseCase: DeleteBookUseCase,
+    private val chapterRepository: ChapterRepository,
     private val fileStorageService: FileStorageService,
-    private val wordRepository: WordRepository,
+    wordRepository: WordRepository,
     private val repository: BookRepository
 ) : ViewModel() {
 
     val bookId: Long = checkNotNull(savedStateHandle["bookId"])
 
     private val _searchQuery = MutableStateFlow("")
-    val searchQuery = _searchQuery.asStateFlow()
 
     val uiState: StateFlow<BookDetailUiState> = combine(
-        getBookStatsUseCase(bookId),
-        getChaptersForBookUseCase(bookId),
-        wordRepository.getChapterMastery(bookId),
-        getActiveSessionUseCase(bookId),
-        _searchQuery
-    ) { stats, chapters, mastery, active, query ->
+        combine(repository.getBookById(bookId), getBookStatsUseCase(bookId), getChaptersForBookUseCase(bookId)) { b, s, c -> Triple(b, s, c) },
+        combine(wordRepository.getChapterMastery(bookId), getActiveSessionUseCase(bookId), _searchQuery) { m, a, q -> Triple(m, a, q) }
+    ) { part1, part2 ->
+        val (book, stats, chapters) = part1
+        val (mastery, active, query) = part2
+
         val filteredChapters = if (query.isBlank()) chapters 
         else chapters.filter { it.number.contains(query, ignoreCase = true) || (it.title?.contains(query, ignoreCase = true) == true) }
         
         BookDetailUiState(
+            book = book,
             stats = stats,
             chapters = filteredChapters,
             mastery = mastery,
@@ -150,6 +154,21 @@ class BookDetailViewModel @Inject constructor(
     fun deleteChapter(chapterId: Long) {
         viewModelScope.launch {
             deleteChapterUseCase(chapterId)
+        }
+    }
+
+    fun updateChapterInfo(chapterId: Long, number: String, title: String?) {
+        viewModelScope.launch {
+            val existing = chapterRepository.getChapterById(chapterId)
+            existing?.let {
+                chapterRepository.updateChapter(it.copy(number = number, title = title))
+            }
+        }
+    }
+
+    fun deleteBook() {
+        viewModelScope.launch {
+            deleteBookUseCase(bookId)
         }
     }
 }

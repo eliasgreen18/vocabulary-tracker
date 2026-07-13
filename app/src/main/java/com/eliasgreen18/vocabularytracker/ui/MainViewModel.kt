@@ -10,6 +10,7 @@ import com.eliasgreen18.vocabularytracker.domain.model.WordWithCount
 import com.eliasgreen18.vocabularytracker.domain.repository.UserPreferencesRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetExportDataUseCase
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetHomeDashboardUseCase
+import com.eliasgreen18.vocabularytracker.domain.usecase.SearchWordsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,13 +20,19 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     getHomeDashboardUseCase: GetHomeDashboardUseCase,
+    searchWordsUseCase: SearchWordsUseCase,
     private val backupService: BackupService,
     private val googleDriveService: GoogleDriveService,
     private val exportService: ExportService,
     private val proExportService: ProExportService,
     private val getExportDataUseCase: GetExportDataUseCase,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
+
+    // PRE-LOADER: Triggers vocabulary load on app start to warm up DB cache
+    init {
+        searchWordsUseCase("").launchIn(viewModelScope)
+    }
 
     val activeSessionId: StateFlow<Long?> = getHomeDashboardUseCase().map { dashboard ->
         dashboard.activeSessions.firstOrNull()?.session?.id

@@ -12,6 +12,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 data class FilterState(
     val mastery: WordMastery? = null,
@@ -19,7 +20,7 @@ data class FilterState(
     val author: String? = null,
     val isFavoriteOnly: Boolean = false,
     val minHits: Int? = null,
-    val maxHits: Int? = null
+    val maxHits: Int? = null,
 )
 
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -30,7 +31,7 @@ class WordsViewModel @Inject constructor(
     private val toggleFocusWordUseCase: ToggleFocusWordUseCase,
     private val batchDeleteWordsUseCase: BatchDeleteWordsUseCase,
     private val batchToggleFocusUseCase: BatchToggleFocusUseCase,
-    private val getBooksUseCase: GetBooksUseCase,
+    getBooksUseCase: GetBooksUseCase,
     private val wordRepository: WordRepository
 ) : ViewModel() {
 
@@ -53,7 +54,7 @@ class WordsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val searchResults: StateFlow<List<WordWithCount>> = combine(
-        _searchQuery.debounce(300),
+        _searchQuery.debounce(300.milliseconds),
         _filters
     ) { query, f ->
         query to f
@@ -70,7 +71,7 @@ class WordsViewModel @Inject constructor(
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
@@ -119,14 +120,5 @@ class WordsViewModel @Inject constructor(
             batchToggleFocusUseCase(ids, isFocus)
             clearSelection()
         }
-    }
-
-    // Compatibility for legacy calls if any
-    fun onFilterChanged(mastery: WordMastery?) {
-        _filters.update { it.copy(mastery = mastery) }
-    }
-    
-    fun onBookFilterChanged(bookId: Long?) {
-        _filters.update { it.copy(bookId = bookId) }
     }
 }

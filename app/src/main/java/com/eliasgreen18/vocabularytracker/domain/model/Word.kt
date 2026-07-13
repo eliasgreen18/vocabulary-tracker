@@ -19,5 +19,6 @@ data class Word(
     val ipa: String? = null,
     val notes: String? = null,
     val aiExplanation: String? = null,
-    val aiExamples: String? = null
+    val aiExamples: String? = null,
+    val globalCount: Int = 0
 )

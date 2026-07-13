@@ -1,8 +1,8 @@
 package com.eliasgreen18.vocabularytracker.data.repository
 
 import com.eliasgreen18.vocabularytracker.data.local.dao.ChapterDao
-import com.eliasgreen18.vocabularytracker.data.local.entity.toDomain
-import com.eliasgreen18.vocabularytracker.data.local.entity.toEntity
+import com.eliasgreen18.vocabularytracker.data.mapper.toDomain
+import com.eliasgreen18.vocabularytracker.data.mapper.toEntity
 import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 import com.eliasgreen18.vocabularytracker.domain.repository.ChapterRepository
 import kotlinx.coroutines.flow.Flow

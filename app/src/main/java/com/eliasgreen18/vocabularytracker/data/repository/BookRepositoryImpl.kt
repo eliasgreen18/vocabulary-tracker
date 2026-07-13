@@ -1,20 +1,24 @@
 package com.eliasgreen18.vocabularytracker.data.repository
 
 import com.eliasgreen18.vocabularytracker.data.local.dao.BookDao
-import com.eliasgreen18.vocabularytracker.data.local.entity.toDomain
-import com.eliasgreen18.vocabularytracker.data.local.entity.toEntity
+import com.eliasgreen18.vocabularytracker.data.mapper.toDomain
+import com.eliasgreen18.vocabularytracker.data.mapper.toEntity
+import com.eliasgreen18.vocabularytracker.data.util.FileStorageService
 import com.eliasgreen18.vocabularytracker.domain.model.Book
 import com.eliasgreen18.vocabularytracker.domain.model.BookStatus
 import com.eliasgreen18.vocabularytracker.domain.model.BookWithStats
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import javax.inject.Inject
 
 class BookRepositoryImpl @Inject constructor(
-    private val bookDao: BookDao
+    private val bookDao: BookDao,
+    private val fileStorageService: FileStorageService
 ) : BookRepository {
+
     override fun getAllBooks(): Flow<List<Book>> {
         return bookDao.getAllBooks().map { entities ->
             entities.map { it.toDomain() }
@@ -23,21 +27,7 @@ class BookRepositoryImpl @Inject constructor(
 
     override fun getAllBooksWithStats(): Flow<List<BookWithStats>> {
         return bookDao.getAllBooksWithStats().map { entities ->
-            entities.map { 
-                BookWithStats(
-                    id = it.id,
-                    title = it.title,
-                    author = it.author,
-                    language = it.language,
-                    genre = it.genre,
-                    coverPath = it.coverPath,
-                    filePath = it.filePath,
-                    status = try { BookStatus.valueOf(it.status) } catch (e: Exception) { BookStatus.READING },
-                    wordCount = it.wordCount,
-                    chapterCount = it.chapterCount,
-                    lastOpenedAt = it.lastOpenedAt
-                )
-            }
+            entities.map { it.toDomain() }
         }
     }
 
@@ -59,5 +49,14 @@ class BookRepositoryImpl @Inject constructor(
 
     override suspend fun updateBookStatus(bookId: Long, status: BookStatus) {
         bookDao.updateBookStatus(bookId, status.name)
+    }
+
+    override suspend fun deleteBook(bookId: Long) {
+        val book = bookDao.getBookById(bookId).first()?.toDomain()
+        book?.let {
+            it.coverPath?.let { path -> fileStorageService.deleteFile(path) }
+            it.filePath?.let { path -> fileStorageService.deleteFile(path) }
+            bookDao.deleteBook(it.toEntity())
+        }
     }
 }

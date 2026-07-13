@@ -5,6 +5,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.eliasgreen18.vocabularytracker.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,7 +25,18 @@ fun MainTopBar(
     var showMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text(title) },
+        title = { 
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.titleLarge,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold
+            ) 
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            titleContentColor = MaterialTheme.colorScheme.onBackground
+        ),
         actions = {
             Box {
                 IconButton(onClick = { showMenu = true }) {
@@ -31,7 +47,7 @@ fun MainTopBar(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Notifications") },
+                        text = { Text(stringResource(R.string.menu_notifications)) },
                         onClick = { 
                             showMenu = false
                             onNavigateToNotifications() 
@@ -39,7 +55,7 @@ fun MainTopBar(
                         leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Settings") },
+                        text = { Text(stringResource(R.string.menu_settings)) },
                         onClick = { 
                             showMenu = false
                             onNavigateToSettings() 
@@ -50,7 +66,7 @@ fun MainTopBar(
                     HorizontalDivider()
 
                     DropdownMenuItem(
-                        text = { Text("Sync to Google Drive") },
+                        text = { Text(stringResource(R.string.menu_sync_drive)) },
                         onClick = { 
                             showMenu = false
                             onSyncClick() 
@@ -59,7 +75,7 @@ fun MainTopBar(
                     )
 
                     DropdownMenuItem(
-                        text = { Text("Export to CSV") },
+                        text = { Text(stringResource(R.string.menu_export_csv)) },
                         onClick = { 
                             showMenu = false
                             onExportCsvClick() 
@@ -68,7 +84,7 @@ fun MainTopBar(
                     )
 
                     DropdownMenuItem(
-                        text = { Text("Export to JSON") },
+                        text = { Text(stringResource(R.string.menu_export_json)) },
                         onClick = { 
                             showMenu = false
                             onExportJsonClick() 
@@ -77,7 +93,7 @@ fun MainTopBar(
                     )
 
                     DropdownMenuItem(
-                        text = { Text("Create .db Backup") },
+                        text = { Text(stringResource(R.string.menu_db_backup)) },
                         onClick = { 
                             showMenu = false
                             onBackupClick() 

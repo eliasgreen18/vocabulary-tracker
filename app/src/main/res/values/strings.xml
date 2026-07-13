@@ -1,3 +1,184 @@
 <resources>
     <string name="app_name">VocabularyTracker</string>
+    <string name="version_label">Version %1$s</string>
+
+    <!-- Navigation & General -->
+    <string name="nav_home">Home</string>
+    <string name="nav_books">Books</string>
+    <string name="nav_read">Read</string>
+    <string name="nav_words">Words</string>
+    <string name="nav_me">Me</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="ok">OK</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="upload">Upload</string>
+    <string name="read">Read</string>
+    <string name="edit">Edit</string>
+
+    <!-- Home Screen -->
+    <string name="welcome_back">Welcome back,</string>
+    <string name="hi">Hi, %1$s</string>
+    <string name="day_streak">%1$d day streak</string>
+    <string name="continue_reading">CONTINUE READING</string>
+    <string name="daily_review">Daily Review</string>
+    <string name="words_due">%1$d words due</string>
+    <string name="word_of_the_day">WORD OF THE DAY</string>
+    <string name="refresh">Refresh</string>
+    <string name="stat_total_words">Total Words</string>
+    <string name="stat_mastered">Mastered</string>
+    <string name="empty_home_title">Start a new book</string>
+    <string name="empty_home_subtitle">Your last book will appear here.</string>
+
+    <!-- Words Screen -->
+    <string name="words_title">My Vocabulary</string>
+    <string name="search_hint">Search words…</string>
+    <string name="words_found_count">%1$d words found</string>
+    <string name="clear_filters">Clear Filters</string>
+    <string name="reset_filters">Reset Filters</string>
+    <string name="filter_refine_title">Refine Search</string>
+    <string name="filter_only_favorites">Show only favorites</string>
+    <string name="filter_by_knowledge">By Knowledge Level</string>
+    <string name="filter_by_book">By Book</string>
+    <string name="filter_by_encounters">By Encounter Frequency</string>
+    <string name="filter_apply">Apply</string>
+    <string name="encounters_count">%1$d encounters</string>
+    <string name="delete_selected_title">Delete selected words?</string>
+    <string name="delete_selected_desc">This will permanently remove the selected words and all their history.</string>
+
+    <!-- Books Screen -->
+    <string name="library_title">Your Library</string>
+    <string name="add_book">Add Book</string>
+    <string name="empty_library_desc">Your library is empty.\nAdd your first book to start.</string>
+    <string name="book_author_unknown">Unknown</string>
+    <string name="add_new_book_title">Add New Book</string>
+    <string name="field_title">Title *</string>
+    <string name="field_author">Author</string>
+    <string name="field_language">Language *</string>
+    <string name="field_genre">Genre</string>
+    <string name="pick_cover">Pick Cover Image</string>
+    <string name="cover_selected">Cover Selected ✓</string>
+
+    <!-- Book Detail Screen -->
+    <string name="chapters_title">Chapters</string>
+    <string name="edit_book_info">Edit Book Info</string>
+    <string name="delete_entire_book_title">Delete entire book?</string>
+    <string name="delete_entire_book_desc">This will permanently remove the book and its associated files. Words in your vocabulary list will remain.</string>
+    <string name="registered_words_count">%1$d words registered</string>
+    <string name="btn_chapter">Chapter</string>
+    <string name="btn_read_pdf">Read PDF</string>
+    <string name="btn_read_epub">Read EPUB</string>
+    <string name="btn_stats">Stats</string>
+    <string name="btn_finish_book">Finish Book</string>
+    <string name="btn_reopen_book">Re-open Book</string>
+    <string name="search_chapters_hint">Search chapters…</string>
+    <string name="delete_chapter_title">Delete Chapter?</string>
+    <string name="delete_chapter_desc">This will remove the chapter history. Words registered will remain in your collection but won\'t be linked to this chapter anymore.</string>
+    <string name="words_mastered_progress">%1$d/%2$d words mastered</string>
+    <string name="click_to_view_words">Click to view words</string>
+    <string name="book_stats_title">Book Analytics</string>
+    <string name="words_learned_stat">Words Learned</string>
+    <string name="words_mastered_stat">Words Mastered</string>
+    <string name="total_reading_time">Total Reading Time</string>
+    <string name="continue_reading_btn">Continue Reading</string>
+    <string name="start_new_session">New Reading Session</string>
+    <string name="edit_chapter_title">Edit Chapter</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Preferences</string>
+    <string name="section_identity">Your Identity</string>
+    <string name="field_personal_name">Personal Name</string>
+    <string name="section_study_reminders">Study Reminders</string>
+    <string name="item_review_alerts">Review Alerts</string>
+    <string name="desc_review_alerts">Get notified when words are due.</string>
+    <string name="item_reminder_time">Daily reminder at</string>
+    <string name="section_cloud_backup">Cloud Backup</string>
+    <string name="item_connect_drive">Connect Google Drive</string>
+    <string name="item_connected_cloud">Connected to Cloud</string>
+    <string name="desc_secure_vocab">Secure your vocabulary automatically.</string>
+    <string name="item_auto_sync">Auto-sync on Session End</string>
+    <string name="desc_auto_sync">Upload backup after every reading.</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="section_automation">Automation</string>
+    <string name="item_auto_pronounce">Auto-pronounce</string>
+    <string name="desc_auto_pronounce">Speak words during review.</string>
+    <string name="item_keep_history">Keep history</string>
+    <string name="desc_keep_history">Store multiple backup versions.</string>
+    <string name="section_data_management">Data Management</string>
+    <string name="item_process_translations">Process Missing Data</string>
+    <string name="desc_process_translations">Run auto-translation.</string>
+    <string name="item_import_external">Import from External</string>
+    <string name="desc_import_external">Load words from CSV or JSON.</string>
+    <string name="item_test_reminder">Test System Reminder</string>
+    <string name="desc_test_reminder">Triggers a notification in 5 seconds.</string>
+
+    <!-- Readers -->
+    <string name="reader_loading">Preparing book…</string>
+    <string name="reader_error_format">This book format is not fully supported.</string>
+    <string name="reader_detected_text">Detected Text</string>
+    <string name="reader_tap_to_save">Tap a sentence to save</string>
+    <string name="reader_add_word_context">Add with context</string>
+
+    <!-- Menu Actions -->
+    <string name="menu_notifications">Notifications</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_sync_drive">Sync to Drive</string>
+    <string name="menu_export_csv">Export to CSV</string>
+    <string name="menu_export_json">Export to JSON</string>
+    <string name="menu_db_backup">Database Backup</string>
+
+    <!-- Me (Stats) Screen -->
+    <string name="stats_learning_progress">Learning Progress</string>
+    <string name="stats_full_timeline">Full Timeline</string>
+    <string name="stats_reading_profile">Reading Profile</string>
+    <string name="stats_activity_intensity">Activity Intensity</string>
+    <string name="stats_activity_desc">Your consistency over the last 12 weeks.</string>
+    <string name="stats_vocab_mastery">Vocabulary Mastery</string>
+    <string name="stats_vocab_mastery_desc">Distribution of your collection by knowledge level.</string>
+    <string name="stats_accuracy">Accuracy</string>
+    <string name="stats_forgotten">Forgotten</string>
+    <string name="stats_velocity">Velocity</string>
+    <string name="stats_words_ready_review">%1$d words ready to review</string>
+    <string name="stats_vocab_power">Vocabulary Power</string>
+    <string name="stats_unique">Unique</string>
+    <string name="stats_total">Total</string>
+    <string name="stats_learned">Learned</string>
+    <string name="stats_words_per_hour">Words/h</string>
+    <string name="stats_memory_score">Memory Score</string>
+    <string name="stats_recall_accuracy">Recall Accuracy</string>
+    <string name="stats_challenging_author">MOST CHALLENGING AUTHOR</string>
+    <string name="stats_challenging_chapter_desc">%1$d unique words in a single chapter.</string>
+    <string name="stats_words_per_book">Words per Book</string>
+    <string name="stats_words_per_book_desc">Unique vocabulary contributed by each book.</string>
+    <string name="stats_challenging_chapters">Most Challenging Chapters</string>
+    <string name="stats_challenging_chapters_desc">Chapters with the highest density of new words.</string>
+    <string name="stats_weekly_focus">WEEKLY FOCUS</string>
+    <string name="stats_min_goal">%1$d / %2$d min</string>
+    <string name="stats_current_streak">CURRENT STREAK</string>
+    <string name="stats_all_time_best">ALL-TIME BEST</string>
+    <string name="btn_start">Start</string>
+
+    <!-- Book Actions & Dialogs -->
+    <string name="edit_book_title">Edit Book Info</string>
+    <string name="delete_book_btn">Delete Book</string>
+    <string name="delete_entire_book_confirm_title">Delete entire book?</string>
+    <string name="delete_entire_book_confirm_desc">This will permanently remove the book and its associated files. Words in your vocabulary list will remain.</string>
+    <string name="field_title_hint">Title *</string>
+    <string name="field_author_hint">Author</string>
+    <string name="field_language_hint">Language *</string>
+    <string name="field_genre_hint">Genre</string>
+    <string name="filter_to">to</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <!-- Import/Export Dialogs -->
+    <string name="import_confirm_title">Confirm Import</string>
+    <string name="import_confirm_desc">Do you want to import words from the selected file?</string>
+    <string name="import_overwrite_label">Overwrite existing data</string>
+    <string name="import_btn">Import</string>
+    <string name="export_anki_desc">Export selected words to Anki deck.</string>
+    <string name="field_name_label">Your name</string>
+
+    <string name="added_snackbar">Added: %1$s</string>
 </resources>

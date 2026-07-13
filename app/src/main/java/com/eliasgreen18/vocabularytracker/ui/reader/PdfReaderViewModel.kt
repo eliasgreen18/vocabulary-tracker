@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eliasgreen18.vocabularytracker.data.remote.ocr.TextRecognitionService
+import com.eliasgreen18.vocabularytracker.domain.model.Book
 import com.eliasgreen18.vocabularytracker.domain.model.Chapter
 import com.eliasgreen18.vocabularytracker.domain.repository.BookRepository
 import com.eliasgreen18.vocabularytracker.domain.usecase.GetActiveSessionUseCase
@@ -14,10 +14,7 @@ import com.eliasgreen18.vocabularytracker.domain.usecase.UpsertChapterUseCase
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -34,8 +31,8 @@ class PdfReaderViewModel @Inject constructor(
 
     val bookId: Long = checkNotNull(savedStateHandle["bookId"])
     
-    private val _pdfPath = MutableStateFlow<String?>(null)
-    val pdfPath: StateFlow<String?> = _pdfPath.asStateFlow()
+    val bookState: StateFlow<Book?> = bookRepository.getBookById(bookId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     
     private val _extractedText = MutableStateFlow<Text?>(null)
     val extractedText = _extractedText.asStateFlow()
@@ -47,9 +44,6 @@ class PdfReaderViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val book = bookRepository.getBookById(bookId).first()
-            _pdfPath.value = book?.filePath
-            
             val active = getActiveSessionUseCase(bookId).first()
             if (active != null) {
                 activeSessionId = active.id
@@ -65,8 +59,6 @@ class PdfReaderViewModel @Inject constructor(
             _isProcessing.value = true
             try {
                 val image = InputImage.fromBitmap(bitmap, 0)
-                // We could use TextRecognitionService but it takes ImageProxy. 
-                // Let's call ML Kit directly here for Bitmap.
                 val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(
                     com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS
                 )

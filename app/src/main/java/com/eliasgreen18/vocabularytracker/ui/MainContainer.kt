@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -23,29 +24,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import com.eliasgreen18.vocabularytracker.navigation.Screen
-import com.eliasgreen18.vocabularytracker.ui.books.BookDetailScreen
-import com.eliasgreen18.vocabularytracker.ui.books.BooksScreen
-import com.eliasgreen18.vocabularytracker.ui.review.ReviewScreen
-import com.eliasgreen18.vocabularytracker.ui.session.ActiveSessionScreen
-import com.eliasgreen18.vocabularytracker.ui.session.ChapterDetailScreen
-import com.eliasgreen18.vocabularytracker.ui.stats.StatsScreen
-import com.eliasgreen18.vocabularytracker.ui.words.WordsScreen
-import com.eliasgreen18.vocabularytracker.ui.words.WordDetailScreen
-import com.eliasgreen18.vocabularytracker.ui.settings.SettingsScreen
-import com.eliasgreen18.vocabularytracker.ui.notifications.NotificationCenterScreen
-import com.eliasgreen18.vocabularytracker.ui.stats.GlobalTimelineScreen
-import com.eliasgreen18.vocabularytracker.ui.stats.ReadingProfileScreen
-import com.eliasgreen18.vocabularytracker.ui.books.BookCompletionScreen
-import com.eliasgreen18.vocabularytracker.ui.scanner.CameraScannerScreen
-import com.eliasgreen18.vocabularytracker.ui.reader.PdfReaderScreen
-import com.eliasgreen18.vocabularytracker.ui.reader.EpubReaderScreen
-import com.eliasgreen18.vocabularytracker.ui.home.HomeScreen
+import com.eliasgreen18.vocabularytracker.navigation.graphs.*
 import com.eliasgreen18.vocabularytracker.ui.theme.VocabularyTrackerTheme
 
 sealed class NavItem {
@@ -106,33 +88,42 @@ fun MainContainer(
         NavItem.ScreenItem(Screen.Books, "Books", Icons.Default.Book),
         NavItem.ActionItem,
         NavItem.ScreenItem(Screen.Search, "Words", Icons.Default.Translate),
-        NavItem.ScreenItem(Screen.Stats, "Stats", Icons.Default.Leaderboard)
+        NavItem.ScreenItem(Screen.Stats, "Me", Icons.Default.Person)
     )
 
     VocabularyTrackerTheme(appTheme = appTheme) {
-        val showBottomBar = currentDestination?.route?.let { route ->
-            !route.startsWith("epub_reader") && !route.startsWith("pdf_reader")
-        } ?: true
+        val currentRoute = currentDestination?.route ?: ""
+        val showBottomBar = !currentRoute.startsWith("epub_reader") && 
+                           !currentRoute.startsWith("pdf_reader") && 
+                           !currentRoute.startsWith("session/") &&
+                           !currentRoute.startsWith("chapter/") &&
+                           !currentRoute.startsWith("book/") &&
+                           !currentRoute.startsWith("word/") &&
+                           !currentRoute.contains("book_completion") &&
+                           !currentRoute.contains("review") &&
+                           !currentRoute.contains("camera_scanner")
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp
+                    ) {
                         items.forEach { item ->
                             val isSelected = when (item) {
                                 is NavItem.ScreenItem -> {
-                                    val currentRoute = currentDestination?.route ?: ""
                                     when (item.screen.route) {
                                         Screen.Home.route -> currentRoute == Screen.Home.route
                                         Screen.Search.route -> currentRoute == Screen.Search.route || currentRoute.startsWith("word/")
-                                        Screen.Books.route -> currentRoute == Screen.Books.route || currentRoute.startsWith("book/") || currentRoute.startsWith("chapter/")
+                                        Screen.Books.route -> currentRoute == Screen.Books.route || currentRoute.startsWith("book/")
                                         Screen.Stats.route -> currentRoute == Screen.Stats.route
                                         else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
                                     }
                                 }
-                                is NavItem.ActionItem -> currentDestination?.hierarchy?.any { it.route?.startsWith("session/") == true } == true
+                                is NavItem.ActionItem -> currentRoute.startsWith("session/")
                             }
 
                             NavigationBarItem(
@@ -146,30 +137,31 @@ fun MainContainer(
                                         )
                                     }
                                 },
-                                label = { 
-                                    Text(if (item is NavItem.ScreenItem) item.label else "Read") 
-                                },
+                                label = { Text(if (item is NavItem.ScreenItem) item.label else "Read") },
                                 selected = isSelected,
                                 onClick = {
                                     when (item) {
                                         is NavItem.ScreenItem -> {
-                                            if (isSelected) {
-                                                navController.navigate(item.screen.route) {
-                                                    popUpTo(item.screen.route) { inclusive = true }
+                                            val targetRoute = item.screen.route
+                                            if (currentRoute == targetRoute) {
+                                                navController.navigate(targetRoute) {
+                                                    popUpTo(targetRoute) { inclusive = true }
                                                 }
                                             } else {
-                                                navController.navigate(item.screen.route) {
+                                                navController.navigate(targetRoute) {
                                                     popUpTo(navController.graph.findStartDestination().id) {
                                                         saveState = true
                                                     }
                                                     launchSingleTop = true
-                                                    restoreState = false 
+                                                    restoreState = true
                                                 }
                                             }
                                         }
                                         is NavItem.ActionItem -> {
                                             activeSessionId?.let { id ->
-                                                navController.navigate(Screen.ActiveSession.createRoute(id))
+                                                navController.navigate(Screen.ActiveSession.createRoute(id)) {
+                                                    launchSingleTop = true
+                                                }
                                             } ?: run {
                                                 navController.navigate(Screen.Books.route)
                                             }
@@ -182,195 +174,24 @@ fun MainContainer(
                 }
             }
         ) { innerPadding ->
-             Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+            Surface(
+                modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Home.route,
-                    enterTransition = { EnterTransition.None },
-                    exitTransition = { ExitTransition.None },
-                    popEnterTransition = { EnterTransition.None },
-                    popExitTransition = { ExitTransition.None }
-                ) {
-                    composable(Screen.Home.route) {
-                        HomeScreen(
-                            onNavigateToReview = { navController.navigate(Screen.Review.route) },
-                            onNavigateToBooks = { navController.navigate(Screen.Books.route) },
-                            onNavigateToBookDetail = { bookId ->
-                                navController.navigate(Screen.BookDetail.createRoute(bookId))
-                            },
-                            onNavigateToPdfReader = { bookId ->
-                                navController.navigate(Screen.PdfReader.createRoute(bookId))
-                            },
-                            onNavigateToEpubReader = { bookId ->
-                                navController.navigate(Screen.EpubReader.createRoute(bookId))
-                            },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                            onBackupClick = { viewModel.exportBackup() },
-                            onSyncClick = { viewModel.syncToDrive() },
-                            onExportCsvClick = { viewModel.exportToCsv() },
-                            onExportJsonClick = { viewModel.exportToJson() }
-                        )
-                    }
-                    composable(Screen.Search.route) {
-                        WordsScreen(
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                            onBackupClick = { viewModel.exportBackup() },
-                            onSyncClick = { viewModel.syncToDrive() },
-                            onExportCsvClick = { viewModel.exportToCsv() },
-                            onExportJsonClick = { viewModel.exportToJson() },
-                            onExportAnkiClick = { words -> viewModel.exportToAnki(words) },
-                            onExportQuizletClick = { words -> viewModel.exportToQuizlet(words) }
-                        )
-                    }
-                    composable(Screen.Books.route) {
-                        BooksScreen(
-                            onNavigateToBookDetail = { bookId ->
-                                navController.navigate(Screen.BookDetail.createRoute(bookId))
-                            },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                            onBackupClick = { viewModel.exportBackup() },
-                            onSyncClick = { viewModel.syncToDrive() },
-                            onExportCsvClick = { viewModel.exportToCsv() },
-                            onExportJsonClick = { viewModel.exportToJson() }
-                        )
-                    }
-                    composable(Screen.Review.route) {
-                        ReviewScreen(
-                            onNavigateBack = {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                            onBackupClick = { viewModel.exportBackup() },
-                            onSyncClick = { viewModel.syncToDrive() },
-                            onExportCsvClick = { viewModel.exportToCsv() },
-                            onExportJsonClick = { viewModel.exportToJson() }
-                        )
-                    }
-                    composable(Screen.Stats.route) {
-                        StatsScreen(
-                            onNavigateToReview = {
-                                navController.navigate(Screen.Review.route)
-                            },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                            onNavigateToTimeline = { navController.navigate(Screen.GlobalTimeline.route) },
-                            onNavigateToProfile = { navController.navigate(Screen.ReadingProfile.route) },
-                            onBackupClick = { viewModel.exportBackup() },
-                            onSyncClick = { viewModel.syncToDrive() },
-                            onExportCsvClick = { viewModel.exportToCsv() },
-                            onExportJsonClick = { viewModel.exportToJson() }
-                        )
-                    }
-                    
-                    composable(
-                        route = Screen.BookDetail.route,
-                        arguments = listOf(navArgument("bookId") { type = NavType.LongType })
+                Box(modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp)) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Home.route,
+                        enterTransition = { EnterTransition.None },
+                        exitTransition = { ExitTransition.None },
+                        popEnterTransition = { EnterTransition.None },
+                        popExitTransition = { ExitTransition.None }
                     ) {
-                        BookDetailScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToSession = { sessionId ->
-                                navController.navigate(Screen.ActiveSession.createRoute(sessionId))
-                            },
-                            onNavigateToChapterDetail = { chapterId ->
-                                navController.navigate(Screen.ChapterDetail.createRoute(chapterId))
-                            },
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            },
-                            onNavigateToCompletion = { bookId ->
-                                navController.navigate(Screen.BookCompletion.createRoute(bookId))
-                            },
-                            onNavigateToPdfReader = { bookId ->
-                                navController.navigate(Screen.PdfReader.createRoute(bookId))
-                            },
-                            onNavigateToEpubReader = { bookId ->
-                                navController.navigate(Screen.EpubReader.createRoute(bookId))
-                            }
-                        )
-                    }
-                    
-                    composable(
-                        route = Screen.PdfReader.route,
-                        arguments = listOf(navArgument("bookId") { type = NavType.LongType })
-                    ) {
-                        PdfReaderScreen(onNavigateBack = { navController.popBackStack() })
-                    }
-
-                    composable(
-                        route = Screen.EpubReader.route,
-                        arguments = listOf(navArgument("bookId") { type = NavType.LongType })
-                    ) {
-                        EpubReaderScreen(onNavigateBack = { navController.popBackStack() })
-                    }
-                    
-                    composable(
-                        route = Screen.ActiveSession.route,
-                        arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
-                    ) {
-                        ActiveSessionScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            },
-                            onNavigateToScanner = {
-                                navController.navigate(Screen.CameraScanner.route)
-                            }
-                        )
-                    }
-
-                    composable(Screen.CameraScanner.route) {
-                        CameraScannerScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onTextSelected = { text ->
-                                navController.previousBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("scanned_text", text)
-                                navController.popBackStack()
-                            }
-                        )
-                    }
-                    composable(
-                        route = Screen.WordDetail.route,
-                        arguments = listOf(navArgument("wordId") { type = NavType.LongType })
-                    ) {
-                        WordDetailScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            }
-                        )
-                    }
-                    composable(
-                        route = Screen.ChapterDetail.route,
-                        arguments = listOf(navArgument("chapterId") { type = NavType.LongType })
-                    ) {
-                        ChapterDetailScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToWordDetail = { wordId ->
-                                navController.navigate(Screen.WordDetail.createRoute(wordId))
-                            }
-                        )
+                        homeGraph(navController, viewModel)
+                        libraryGraph(navController, viewModel)
+                        wordsGraph(navController, viewModel)
+                        statsGraph(navController, viewModel)
+                        settingsGraph(navController)
                     }
                 }
             }

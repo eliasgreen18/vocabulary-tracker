@@ -33,4 +33,7 @@ sealed class Screen(val route: String) {
     object EpubReader : Screen("epub_reader/{bookId}") {
         fun createRoute(bookId: Long) = "epub_reader/$bookId"
     }
+    object BookStats : Screen("book_stats/{bookId}") {
+        fun createRoute(bookId: Long) = "book_stats/$bookId"
+    }
 }
